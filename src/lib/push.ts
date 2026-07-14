@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { isSupabaseConfigured, supabase } from './supabase';
+import { ensureSession } from './session';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -33,6 +34,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
   const token = (await Notifications.getExpoPushTokenAsync()).data;
 
   if (isSupabaseConfigured && supabase) {
+    await ensureSession();
     const { data: auth } = await supabase.auth.getUser();
     if (auth.user) {
       await supabase.from('users').update({ expo_push_token: token }).eq('id', auth.user.id);

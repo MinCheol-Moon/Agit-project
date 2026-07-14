@@ -1,19 +1,24 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { ensureSession } from '../lib/session';
 import { AppUser } from '../types';
 import { CURRENT_USER_ID, mockUsers } from './mockStore';
 
-export async function getCurrentUser(): Promise<AppUser> {
+// Returns null when this device has an auth session but no `users` row yet,
+// i.e. it has never submitted the signup form (see screens/auth/SignupScreen).
+export async function getCurrentUser(): Promise<AppUser | null> {
   if (isSupabaseConfigured && supabase) {
+    await ensureSession();
     const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) return null;
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .eq('id', auth.user?.id)
-      .single();
+      .eq('id', auth.user.id)
+      .maybeSingle();
     if (error) throw error;
-    return data as AppUser;
+    return (data as AppUser) ?? null;
   }
-  return mockUsers.find((u) => u.id === CURRENT_USER_ID)!;
+  return mockUsers.find((u) => u.id === CURRENT_USER_ID) ?? null;
 }
 
 export async function listMembers(): Promise<AppUser[]> {
@@ -86,6 +91,7 @@ export async function signUp(input: {
   intro?: string;
 }): Promise<void> {
   if (isSupabaseConfigured && supabase) {
+    await ensureSession();
     const { data: auth } = await supabase.auth.getUser();
     const { error } = await supabase.from('users').insert({
       id: auth.user?.id,

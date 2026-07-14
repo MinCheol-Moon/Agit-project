@@ -14,7 +14,18 @@ export default function MyPageScreen({ navigation }: Props) {
   const { user } = useAuth();
   const { lock } = useAppLock();
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.content}>
+          <Text style={styles.notice}>아직 가입 신청 전이에요. 홈 화면의 가입 배너를 눌러 신청해주세요.</Text>
+          <TouchableOpacity style={styles.lockButton} onPress={lock}>
+            <Text style={styles.lockButtonText}>잠그고 위장 화면으로</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   const progress = Math.min(100, (user.monthlyAttendance / 4) * 100);
 
@@ -70,6 +81,7 @@ export default function MyPageScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
+  notice: { fontSize: 13, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xxl },
   profileCard: { backgroundColor: colors.cardDark, borderRadius: radius.card, padding: spacing.lg },
   profileTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   nickname: { color: colors.white, fontSize: 20, fontWeight: '800' },
