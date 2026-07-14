@@ -11,16 +11,29 @@ type Props = NativeStackScreenProps<ScheduleStackParamList, 'CreateSchedule'>;
 
 const CREWS: Crew[] = ['game', 'tea', 'fishing', 'hiking'];
 
+function defaultDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 3);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function CreateScheduleScreen({ navigation }: Props) {
   const [title, setTitle] = useState('');
   const [place, setPlace] = useState('');
   const [capacity, setCapacity] = useState('10');
   const [crew, setCrew] = useState<Crew>('game');
+  const [date, setDate] = useState(defaultDate());
+  const [time, setTime] = useState('19:00');
+  const [error, setError] = useState('');
 
   const handleSubmit = async () => {
     if (!title || !place) return;
-    const startAt = new Date();
-    startAt.setDate(startAt.getDate() + 3);
+    const startAt = new Date(`${date}T${time}:00`);
+    if (Number.isNaN(startAt.getTime())) {
+      setError('날짜/시간 형식을 확인해주세요 (예: 2026-07-20, 19:00)');
+      return;
+    }
+    setError('');
     await createSchedule({ crew, title, place, capacity: Number(capacity) || 10, startAt: startAt.toISOString() });
     navigation.goBack();
   };
@@ -45,11 +58,19 @@ export default function CreateScheduleScreen({ navigation }: Props) {
         <Text style={styles.label}>제목</Text>
         <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="모임 제목" />
 
+        <Text style={styles.label}>날짜 (YYYY-MM-DD)</Text>
+        <TextInput style={styles.input} value={date} onChangeText={setDate} placeholder="2026-07-20" />
+
+        <Text style={styles.label}>시간 (HH:mm)</Text>
+        <TextInput style={styles.input} value={time} onChangeText={setTime} placeholder="19:00" />
+
         <Text style={styles.label}>장소</Text>
         <TextInput style={styles.input} value={place} onChangeText={setPlace} placeholder="모임 장소" />
 
         <Text style={styles.label}>정원</Text>
         <TextInput style={styles.input} value={capacity} onChangeText={setCapacity} keyboardType="number-pad" />
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
           <Text style={styles.submitText}>일정 만들기</Text>
@@ -84,4 +105,5 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxl,
   },
   submitText: { color: colors.white, fontWeight: '700', fontSize: 15 },
+  error: { color: colors.danger, fontSize: 12, marginTop: spacing.md },
 });
