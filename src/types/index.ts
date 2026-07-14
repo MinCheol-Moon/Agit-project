@@ -118,6 +118,14 @@ export interface ChatMessage {
   createdAt: string;
 }
 
+export interface DirectMessage {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  body: string;
+  createdAt: string;
+}
+
 export interface VoteOption {
   id: string;
   voteId: string;

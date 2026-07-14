@@ -36,7 +36,12 @@ export default function ChatRoomListScreen({ navigation }: Props) {
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.title}>채팅</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>채팅</Text>
+        <TouchableOpacity style={styles.dmButton} onPress={() => navigation.navigate('DmList')}>
+          <Text style={styles.dmButtonText}>개인 메시지 →</Text>
+        </TouchableOpacity>
+      </View>
       <FlatList
         data={rooms}
         keyExtractor={(item) => item.id}
@@ -62,7 +67,10 @@ export default function ChatRoomListScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  title: { fontSize: 20, fontWeight: '700', color: colors.text, padding: spacing.lg },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg },
+  title: { fontSize: 20, fontWeight: '700', color: colors.text },
+  dmButton: { backgroundColor: colors.gold, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill },
+  dmButtonText: { color: colors.white, fontWeight: '700', fontSize: 12 },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, gap: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.line },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.cardDark, alignItems: 'center', justifyContent: 'center' },

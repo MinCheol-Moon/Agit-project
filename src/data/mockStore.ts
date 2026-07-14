@@ -3,6 +3,7 @@ import {
   Attendance,
   ChatMessage,
   ChatRoom,
+  DirectMessage,
   DuesLedgerEntry,
   DuesSettings,
   Post,
@@ -176,6 +177,11 @@ export const mockMessages: ChatMessage[] = [
   { id: 'm-1', roomId: 'c-all', userId: 'u-2', body: '이번주 토요일 내전 어때요', createdAt: iso(0, 9) },
   { id: 'm-2', roomId: 'c-all', userId: CURRENT_USER_ID, body: '콜입니다', createdAt: iso(0, 9) },
   { id: 'm-3', roomId: 'c-all', userId: 'u-3', body: '내일 내전 콜?', createdAt: iso(0, 10) },
+];
+
+export const mockDirectMessages: DirectMessage[] = [
+  { id: 'd-1', senderId: 'u-2', recipientId: CURRENT_USER_ID, body: '형 이번주 시간 돼요?', createdAt: iso(-1, 21) },
+  { id: 'd-2', senderId: CURRENT_USER_ID, recipientId: 'u-2', body: '됨 몇시', createdAt: iso(-1, 21) },
 ];
 
 export const mockPosts: Post[] = [

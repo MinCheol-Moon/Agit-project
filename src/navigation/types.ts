@@ -26,6 +26,8 @@ export type ScheduleStackParamList = {
 export type ChatStackParamList = {
   ChatRoomList: undefined;
   ChatRoom: { roomId: string; roomName: string };
+  DmList: undefined;
+  DmRoom: { otherUserId: string; otherNickname: string };
 };
 
 export type CommunityStackParamList = {
