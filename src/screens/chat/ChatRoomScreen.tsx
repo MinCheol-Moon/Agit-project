@@ -1,0 +1,96 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { colors, radius, spacing } from '../../theme/colors';
+import { ChatStackParamList } from '../../navigation/types';
+import { listMessages, sendMessage, subscribeToRoom } from '../../data/chat';
+import { ChatMessage } from '../../types';
+import { useAuth } from '../../context/AuthContext';
+import { listMembers } from '../../data/users';
+import { ScreenHeader } from '../../components/ScreenHeader';
+
+type Props = NativeStackScreenProps<ChatStackParamList, 'ChatRoom'>;
+
+export default function ChatRoomScreen({ route, navigation }: Props) {
+  const { roomId, roomName } = route.params;
+  const { user } = useAuth();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [nicknames, setNicknames] = useState<Record<string, string>>({});
+  const [input, setInput] = useState('');
+  const listRef = useRef<FlatList>(null);
+
+  const load = useCallback(async () => {
+    const [msgs, members] = await Promise.all([listMessages(roomId), listMembers()]);
+    setMessages(msgs);
+    setNicknames(Object.fromEntries(members.map((m) => [m.id, m.nickname])));
+  }, [roomId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
+
+  useEffect(() => {
+    const unsubscribe = subscribeToRoom(roomId, (message) => {
+      setMessages((prev) => [...prev, message]);
+    });
+    return unsubscribe;
+  }, [roomId]);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    const body = input.trim();
+    setInput('');
+    const message = await sendMessage(roomId, body);
+    setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+  };
+
+  return (
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScreenHeader title={roomName} onBack={() => navigation.goBack()} />
+      <FlatList
+        ref={listRef}
+        data={messages}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
+        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+        renderItem={({ item }) => {
+          const mine = item.userId === user?.id;
+          return (
+            <View style={[styles.bubbleRow, mine && styles.bubbleRowMine]}>
+              {!mine && <Text style={styles.nickname}>{nicknames[item.userId] ?? '회원'}</Text>}
+              <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
+                <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.body}</Text>
+              </View>
+            </View>
+          );
+        }}
+      />
+      <View style={styles.inputRow}>
+        <TextInput style={styles.input} value={input} onChangeText={setInput} placeholder="메시지 입력" />
+        <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
+          <Text style={styles.sendButtonText}>전송</Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#b2c7da' },
+  list: { padding: spacing.lg, gap: spacing.sm },
+  bubbleRow: { alignItems: 'flex-start', marginBottom: spacing.xs },
+  bubbleRowMine: { alignItems: 'flex-end' },
+  nickname: { fontSize: 11, color: colors.textMuted, marginBottom: 2, marginLeft: 4 },
+  bubble: { maxWidth: '75%', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.tile },
+  bubbleMine: { backgroundColor: colors.goldLight },
+  bubbleOther: { backgroundColor: colors.white },
+  bubbleTextMine: { color: '#191c22' },
+  bubbleTextOther: { color: colors.text },
+  inputRow: { flexDirection: 'row', padding: spacing.md, gap: spacing.sm, backgroundColor: colors.white },
+  input: { flex: 1, backgroundColor: colors.background, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 10 },
+  sendButton: { backgroundColor: colors.gold, borderRadius: radius.pill, paddingHorizontal: spacing.lg, justifyContent: 'center' },
+  sendButtonText: { color: colors.white, fontWeight: '700' },
+});
