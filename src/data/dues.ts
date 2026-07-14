@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { camelizeDeep } from '../lib/caseMap';
 import { DuesLedgerEntry, DuesSettings } from '../types';
 import { mockDuesSettings, mockLedger } from './mockStore';
 
@@ -6,7 +7,7 @@ export async function listLedger(): Promise<DuesLedgerEntry[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.from('dues_ledger').select('*').order('occurred_at', { ascending: false });
     if (error) throw error;
-    return data as DuesLedgerEntry[];
+    return camelizeDeep<DuesLedgerEntry[]>(data ?? []);
   }
   return [...mockLedger].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
 }
@@ -19,14 +20,17 @@ export async function getDuesSettings(): Promise<DuesSettings> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.from('dues_settings').select('*').single();
     if (error) throw error;
-    return data as DuesSettings;
+    return camelizeDeep<DuesSettings>(data);
   }
   return mockDuesSettings;
 }
 
 export async function updateDuesSettings(settings: DuesSettings): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.from('dues_settings').update(settings).eq('id', 1);
+    const { error } = await supabase
+      .from('dues_settings')
+      .update({ monthly_fee: settings.monthlyFee, deposit_day: settings.depositDay, notify_on: settings.notifyOn })
+      .eq('id', 1);
     if (error) throw error;
     return;
   }

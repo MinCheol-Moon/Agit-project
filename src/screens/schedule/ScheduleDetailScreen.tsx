@@ -31,10 +31,14 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
       Alert.alert('랄잡부터 참석 투표가 가능합니다');
       return;
     }
-    await setRsvp(scheduleId, status);
-    const updated = await getMyRsvp(scheduleId);
-    setMyRsvp(updated);
-    listSchedules().then((list) => setSchedule(list.find((s) => s.id === scheduleId) ?? null));
+    try {
+      await setRsvp(scheduleId, status);
+      const updated = await getMyRsvp(scheduleId);
+      setMyRsvp(updated);
+      listSchedules().then((list) => setSchedule(list.find((s) => s.id === scheduleId) ?? null));
+    } catch (e) {
+      Alert.alert('참석 등록 실패', e instanceof Error ? e.message : String(e));
+    }
   };
 
   if (!schedule) return null;

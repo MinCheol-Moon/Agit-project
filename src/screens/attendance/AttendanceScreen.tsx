@@ -43,12 +43,16 @@ export default function AttendanceScreen({ navigation }: Props) {
 
   const handleCheckIn = async () => {
     if (!schedule) return;
-    await checkIn(schedule.id);
-    setCheckedIn(true);
-    setScanning(false);
-    await load();
-    await refresh();
-    Alert.alert('체크인 완료', '출석이 등록되었습니다.');
+    try {
+      await checkIn(schedule.id);
+      setCheckedIn(true);
+      setScanning(false);
+      await load();
+      await refresh();
+      Alert.alert('체크인 완료', '출석이 등록되었습니다.');
+    } catch (e) {
+      Alert.alert('체크인 실패', e instanceof Error ? e.message : String(e));
+    }
   };
 
   const startScan = async () => {

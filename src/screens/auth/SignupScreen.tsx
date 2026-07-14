@@ -16,12 +16,17 @@ export default function SignupScreen({ navigation }: Props) {
   const [phone, setPhone] = useState('');
   const [referrer, setReferrer] = useState('');
   const [intro, setIntro] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = async () => {
     if (!realName || !nickname || !phone) return;
-    await signUp({ realName, nickname, phone, referrer, intro });
-    await refresh();
-    navigation.replace('PendingApproval');
+    try {
+      await signUp({ realName, nickname, phone, referrer, intro });
+      await refresh();
+      navigation.replace('PendingApproval');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (
@@ -45,6 +50,8 @@ export default function SignupScreen({ navigation }: Props) {
         <Text style={styles.label}>자기소개 (선택)</Text>
         <TextInput style={[styles.input, styles.multiline]} value={intro} onChangeText={setIntro} placeholder="간단한 소개" multiline />
 
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
           <Text style={styles.submitText}>가입 신청하기</Text>
         </TouchableOpacity>
@@ -62,4 +69,5 @@ const styles = StyleSheet.create({
   multiline: { minHeight: 80, textAlignVertical: 'top' },
   submitButton: { backgroundColor: colors.gold, borderRadius: radius.card, alignItems: 'center', paddingVertical: 16, marginTop: spacing.xxl },
   submitText: { color: colors.white, fontWeight: '700', fontSize: 15 },
+  error: { color: colors.danger, fontSize: 12, marginTop: spacing.md },
 });

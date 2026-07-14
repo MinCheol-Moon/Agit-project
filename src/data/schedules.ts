@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { getAuthUserId } from '../lib/session';
+import { camelizeDeep } from '../lib/caseMap';
 import { Attendance, Crew, Rsvp, RsvpStatus, Schedule } from '../types';
 import { CURRENT_USER_ID, mockAttendances, mockRsvps, mockSchedules } from './mockStore';
 
@@ -7,7 +8,15 @@ export async function listSchedules(): Promise<Schedule[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.from('schedules').select('*').order('start_at');
     if (error) throw error;
-    return data as Schedule[];
+    const schedules = camelizeDeep<Schedule[]>(data ?? []);
+
+    // attendingCount isn't a column; count "yes" rsvps client-side.
+    const { data: rsvpRows, error: rsvpError } = await supabase.from('rsvps').select('schedule_id, status').eq('status', 'yes');
+    if (rsvpError) throw rsvpError;
+    const counts = new Map<string, number>();
+    (rsvpRows ?? []).forEach((r) => counts.set(r.schedule_id, (counts.get(r.schedule_id) ?? 0) + 1));
+
+    return schedules.map((s) => ({ ...s, attendingCount: counts.get(s.id) ?? 0 }));
   }
   return [...mockSchedules].sort((a, b) => a.startAt.localeCompare(b.startAt));
 }
@@ -71,7 +80,7 @@ export async function getMyRsvp(scheduleId: string): Promise<Rsvp | undefined> {
       .eq('schedule_id', scheduleId)
       .eq('user_id', await getAuthUserId())
       .maybeSingle();
-    return (data as Rsvp) ?? undefined;
+    return data ? camelizeDeep<Rsvp>(data) : undefined;
   }
   return mockRsvps.find((r) => r.userId === CURRENT_USER_ID && r.scheduleId === scheduleId);
 }
@@ -84,7 +93,7 @@ export async function checkIn(scheduleId: string): Promise<Attendance> {
       .select()
       .single();
     if (error) throw error;
-    return data as Attendance;
+    return camelizeDeep<Attendance>(data);
   }
   const attendance: Attendance = {
     id: `a-${Date.now()}`,
@@ -105,7 +114,7 @@ export async function listEarlyBirds(scheduleId: string): Promise<Attendance[]> 
       .order('checked_at')
       .limit(10);
     if (error) throw error;
-    return data as Attendance[];
+    return camelizeDeep<Attendance[]>(data ?? []);
   }
   return mockAttendances
     .filter((a) => a.scheduleId === scheduleId)

@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { getAuthUserId } from '../lib/session';
+import { camelizeDeep } from '../lib/caseMap';
 import { Vote } from '../types';
 import { CURRENT_USER_ID, mockVotes } from './mockStore';
 
@@ -7,7 +8,15 @@ export async function listVotes(): Promise<Vote[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.from('votes').select('*, options:vote_options(*)');
     if (error) throw error;
-    return data as unknown as Vote[];
+    const votes = camelizeDeep<Vote[]>(data ?? []);
+
+    // vote_options has no count column; count vote_responses per option client-side.
+    const { data: responseRows, error: responseError } = await supabase.from('vote_responses').select('option_id');
+    if (responseError) throw responseError;
+    const counts = new Map<string, number>();
+    (responseRows ?? []).forEach((r) => counts.set(r.option_id, (counts.get(r.option_id) ?? 0) + 1));
+
+    return votes.map((v) => ({ ...v, options: v.options.map((o) => ({ ...o, count: counts.get(o.id) ?? 0 })) }));
   }
   return mockVotes;
 }

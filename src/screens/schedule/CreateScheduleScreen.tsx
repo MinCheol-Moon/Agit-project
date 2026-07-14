@@ -34,8 +34,12 @@ export default function CreateScheduleScreen({ navigation }: Props) {
       return;
     }
     setError('');
-    await createSchedule({ crew, title, place, capacity: Number(capacity) || 10, startAt: startAt.toISOString() });
-    navigation.goBack();
+    try {
+      await createSchedule({ crew, title, place, capacity: Number(capacity) || 10, startAt: startAt.toISOString() });
+      navigation.goBack();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (

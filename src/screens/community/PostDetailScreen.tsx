@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radius, spacing } from '../../theme/colors';
@@ -28,8 +28,12 @@ export default function PostDetailScreen({ route, navigation }: Props) {
   if (!post) return null;
 
   const handleLike = async () => {
-    await likePost(postId);
-    load();
+    try {
+      await likePost(postId);
+      load();
+    } catch (e) {
+      Alert.alert('좋아요 실패', e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (

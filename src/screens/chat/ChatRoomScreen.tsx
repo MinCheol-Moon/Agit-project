@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radius, spacing } from '../../theme/colors';
@@ -34,7 +34,7 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     const unsubscribe = subscribeToRoom(roomId, (message) => {
-      setMessages((prev) => [...prev, message]);
+      setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
     });
     return unsubscribe;
   }, [roomId]);
@@ -43,8 +43,12 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
     if (!input.trim()) return;
     const body = input.trim();
     setInput('');
-    const message = await sendMessage(roomId, body);
-    setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+    try {
+      const message = await sendMessage(roomId, body);
+      setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+    } catch (e) {
+      Alert.alert('전송 실패', e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (

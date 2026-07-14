@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radius, spacing } from '../../theme/colors';
@@ -27,8 +27,12 @@ export default function VoteScreen({ navigation }: Props) {
   const filtered = votes.filter((v) => (tab === 'ongoing' ? new Date(v.deadline) > new Date() : new Date(v.deadline) <= new Date()));
 
   const handleVote = async (voteId: string, optionId: string) => {
-    await respond(voteId, optionId);
-    load();
+    try {
+      await respond(voteId, optionId);
+      load();
+    } catch (e) {
+      Alert.alert('투표 실패', e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (

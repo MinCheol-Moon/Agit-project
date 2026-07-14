@@ -40,21 +40,33 @@ export default function MembersScreen({ navigation }: Props) {
     const next = !showRealName;
     setShowRealName(next);
     if (next && isAdmin && members.some((m) => !m.realName && !realNames[m.id])) {
-      const entries = await Promise.all(members.map(async (m) => [m.id, await getRealName(m.id)] as const));
-      setRealNames(Object.fromEntries(entries));
+      try {
+        const entries = await Promise.all(members.map(async (m) => [m.id, await getRealName(m.id)] as const));
+        setRealNames(Object.fromEntries(entries));
+      } catch (e) {
+        Alert.alert('실명 조회 실패', e instanceof Error ? e.message : String(e));
+      }
     }
   };
 
   const nameFor = (m: AppUser) => m.realName || realNames[m.id] || '';
 
   const handleApprove = async (id: string) => {
-    await approveMember(id);
-    load();
+    try {
+      await approveMember(id);
+      load();
+    } catch (e) {
+      Alert.alert('승인 실패', e instanceof Error ? e.message : String(e));
+    }
   };
 
   const handleReject = async (id: string) => {
-    await rejectMember(id);
-    load();
+    try {
+      await rejectMember(id);
+      load();
+    } catch (e) {
+      Alert.alert('거절 실패', e instanceof Error ? e.message : String(e));
+    }
   };
 
   const cycleTier = async (member: AppUser) => {
@@ -65,8 +77,12 @@ export default function MembersScreen({ navigation }: Props) {
       {
         text: '변경',
         onPress: async () => {
-          await setMemberTier(member.id, next);
-          load();
+          try {
+            await setMemberTier(member.id, next);
+            load();
+          } catch (e) {
+            Alert.alert('등급 변경 실패', e instanceof Error ? e.message : String(e));
+          }
         },
       },
     ]);

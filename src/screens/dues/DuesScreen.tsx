@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
@@ -44,23 +44,35 @@ export default function DuesScreen({ navigation }: Props) {
   const handleUpload = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
     if (result.canceled) return;
-    const ocr = await uploadReceiptAndRecognize(result.assets[0].uri);
-    setOcrPreview(ocr);
+    try {
+      const ocr = await uploadReceiptAndRecognize(result.assets[0].uri);
+      setOcrPreview(ocr);
+    } catch (e) {
+      Alert.alert('업로드 실패', e instanceof Error ? e.message : String(e));
+    }
   };
 
   const confirmOcr = async () => {
     if (!ocrPreview) return;
-    const matched = members.find((m) => m.nickname === ocrPreview.memberName || m.realName === ocrPreview.memberName);
-    await confirmIncome(ocrPreview, matched?.id);
-    setOcrPreview(null);
-    load();
+    try {
+      const matched = members.find((m) => m.nickname === ocrPreview.memberName || m.realName === ocrPreview.memberName);
+      await confirmIncome(ocrPreview, matched?.id);
+      setOcrPreview(null);
+      load();
+    } catch (e) {
+      Alert.alert('등록 실패', e instanceof Error ? e.message : String(e));
+    }
   };
 
   const toggleDepositNotify = async (value: boolean) => {
     if (!settings) return;
     const next = { ...settings, notifyOn: value };
     setSettings(next);
-    await updateDuesSettings(next);
+    try {
+      await updateDuesSettings(next);
+    } catch (e) {
+      Alert.alert('설정 저장 실패', e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (
@@ -138,9 +150,13 @@ export default function DuesScreen({ navigation }: Props) {
                 <TouchableOpacity
                   style={styles.confirmButton}
                   onPress={async () => {
-                    await addExpense(Number(expenseForm.amount) || 0, expenseForm.memo || '지출');
-                    setExpenseForm(null);
-                    load();
+                    try {
+                      await addExpense(Number(expenseForm.amount) || 0, expenseForm.memo || '지출');
+                      setExpenseForm(null);
+                      load();
+                    } catch (e) {
+                      Alert.alert('지출 등록 실패', e instanceof Error ? e.message : String(e));
+                    }
                   }}
                 >
                   <Text style={styles.confirmButtonText}>등록</Text>

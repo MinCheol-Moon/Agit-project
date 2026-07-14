@@ -1,13 +1,35 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { getAuthUserId } from '../lib/session';
+import { camelizeDeep } from '../lib/caseMap';
 import { Crew, Post } from '../types';
 import { CURRENT_USER_ID, mockPosts } from './mockStore';
+
+function countByKey(rows: { [key: string]: unknown }[] | null, key: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  (rows ?? []).forEach((row) => {
+    const id = row[key] as string;
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  });
+  return counts;
+}
 
 export async function listPosts(): Promise<Post[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
     if (error) throw error;
-    return data as Post[];
+    const posts = camelizeDeep<Post[]>(data ?? []);
+
+    // likeCount/commentCount aren't columns; count post_likes/comments client-side.
+    const [{ data: likeRows, error: likeError }, { data: commentRows, error: commentError }] = await Promise.all([
+      supabase.from('post_likes').select('post_id'),
+      supabase.from('comments').select('post_id'),
+    ]);
+    if (likeError) throw likeError;
+    if (commentError) throw commentError;
+    const likeCounts = countByKey(likeRows, 'post_id');
+    const commentCounts = countByKey(commentRows, 'post_id');
+
+    return posts.map((p) => ({ ...p, likeCount: likeCounts.get(p.id) ?? 0, commentCount: commentCounts.get(p.id) ?? 0 }));
   }
   return [...mockPosts].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }

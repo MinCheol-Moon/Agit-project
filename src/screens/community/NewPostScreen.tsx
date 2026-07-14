@@ -11,11 +11,16 @@ type Props = NativeStackScreenProps<CommunityStackParamList, 'NewPost'>;
 export default function NewPostScreen({ navigation }: Props) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = async () => {
     if (!title || !body) return;
-    await createPost({ title, body });
-    navigation.goBack();
+    try {
+      await createPost({ title, body });
+      navigation.goBack();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (
@@ -30,6 +35,7 @@ export default function NewPostScreen({ navigation }: Props) {
           onChangeText={setBody}
           multiline
         />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
           <Text style={styles.submitText}>등록</Text>
         </TouchableOpacity>
@@ -45,4 +51,5 @@ const styles = StyleSheet.create({
   bodyInput: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radius.tile, padding: spacing.md, fontSize: 14, minHeight: 160, textAlignVertical: 'top' },
   submitButton: { backgroundColor: colors.gold, borderRadius: radius.card, alignItems: 'center', paddingVertical: 16, marginTop: spacing.md },
   submitText: { color: colors.white, fontWeight: '700', fontSize: 15 },
+  error: { color: colors.danger, fontSize: 12 },
 });

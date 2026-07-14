@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { ensureSession } from '../lib/session';
+import { camelizeDeep } from '../lib/caseMap';
 import { AppUser } from '../types';
 import { CURRENT_USER_ID, mockUsers } from './mockStore';
 
@@ -16,7 +17,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
       .eq('id', auth.user.id)
       .maybeSingle();
     if (error) throw error;
-    return (data as AppUser) ?? null;
+    return data ? camelizeDeep<AppUser>(data) : null;
   }
   return mockUsers.find((u) => u.id === CURRENT_USER_ID) ?? null;
 }
@@ -26,7 +27,7 @@ export async function listMembers(): Promise<AppUser[]> {
     // member_directory excludes real_name/phone; only akatsuki can see those via getRealName().
     const { data, error } = await supabase.from('member_directory').select('*').eq('status', 'active');
     if (error) throw error;
-    return data as AppUser[];
+    return camelizeDeep<AppUser[]>(data ?? []);
   }
   return mockUsers.filter((u) => u.status === 'active');
 }
@@ -45,7 +46,7 @@ export async function listPendingMembers(): Promise<AppUser[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase.from('users').select('*').eq('status', 'pending');
     if (error) throw error;
-    return data as AppUser[];
+    return camelizeDeep<AppUser[]>(data ?? []);
   }
   return mockUsers.filter((u) => u.status === 'pending');
 }
