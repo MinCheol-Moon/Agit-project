@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { getAuthUserId } from '../lib/session';
 import { Crew, Post } from '../types';
 import { CURRENT_USER_ID, mockPosts } from './mockStore';
 
@@ -19,7 +20,7 @@ export async function listPopularPosts(): Promise<Post[]> {
 export async function createPost(input: { title: string; body: string; crew?: Crew; imageUrl?: string }): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     const { error } = await supabase.from('posts').insert({
-      user_id: CURRENT_USER_ID,
+      user_id: await getAuthUserId(),
       crew: input.crew,
       title: input.title,
       body: input.body,
@@ -43,7 +44,7 @@ export async function createPost(input: { title: string; body: string; crew?: Cr
 
 export async function likePost(postId: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.from('post_likes').insert({ post_id: postId, user_id: CURRENT_USER_ID });
+    const { error } = await supabase.from('post_likes').insert({ post_id: postId, user_id: await getAuthUserId() });
     if (error) throw error;
     return;
   }

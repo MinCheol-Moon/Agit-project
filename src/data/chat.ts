@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { getAuthUserId } from '../lib/session';
 import { ChatMessage, ChatRoom } from '../types';
 import { CURRENT_USER_ID, mockChatRooms, mockMessages } from './mockStore';
 
@@ -26,9 +27,10 @@ export async function listMessages(roomId: string): Promise<ChatMessage[]> {
 
 export async function sendMessage(roomId: string, body: string): Promise<ChatMessage> {
   if (isSupabaseConfigured && supabase) {
+    const userId = await getAuthUserId();
     const { data, error } = await supabase
       .from('messages')
-      .insert({ room_id: roomId, user_id: CURRENT_USER_ID, body })
+      .insert({ room_id: roomId, user_id: userId, body })
       .select()
       .single();
     if (error) throw error;

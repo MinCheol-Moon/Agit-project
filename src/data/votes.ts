@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { getAuthUserId } from '../lib/session';
 import { Vote } from '../types';
 import { CURRENT_USER_ID, mockVotes } from './mockStore';
 
@@ -38,7 +39,7 @@ export async function respond(voteId: string, optionId: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     const { error } = await supabase
       .from('vote_responses')
-      .upsert({ vote_id: voteId, option_id: optionId, user_id: CURRENT_USER_ID }, { onConflict: 'vote_id,user_id' });
+      .upsert({ vote_id: voteId, option_id: optionId, user_id: await getAuthUserId() }, { onConflict: 'vote_id,user_id' });
     if (error) throw error;
     return;
   }

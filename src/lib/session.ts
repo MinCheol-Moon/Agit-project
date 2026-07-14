@@ -19,3 +19,14 @@ export async function ensureSession(): Promise<void> {
   }
   return ensured;
 }
+
+// The authenticated user's id, i.e. the value auth.uid() resolves to in RLS
+// policies. Callers must already be inside an `isSupabaseConfigured && supabase`
+// branch — this throws otherwise, since there is no auth id in mock mode.
+export async function getAuthUserId(): Promise<string> {
+  if (!isSupabaseConfigured || !supabase) throw new Error('Supabase is not configured');
+  await ensureSession();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) throw new Error('No authenticated user');
+  return data.user.id;
+}

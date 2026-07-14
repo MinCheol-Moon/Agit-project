@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { getAuthUserId } from '../lib/session';
 import { Attendance, Crew, Rsvp, RsvpStatus, Schedule } from '../types';
 import { CURRENT_USER_ID, mockAttendances, mockRsvps, mockSchedules } from './mockStore';
 
@@ -25,7 +26,7 @@ export async function createSchedule(input: {
       start_at: input.startAt,
       place: input.place,
       capacity: input.capacity,
-      created_by: CURRENT_USER_ID,
+      created_by: await getAuthUserId(),
     });
     if (error) throw error;
     return;
@@ -46,7 +47,7 @@ export async function setRsvp(scheduleId: string, status: RsvpStatus): Promise<v
   if (isSupabaseConfigured && supabase) {
     const { error } = await supabase
       .from('rsvps')
-      .upsert({ user_id: CURRENT_USER_ID, schedule_id: scheduleId, status }, { onConflict: 'user_id,schedule_id' });
+      .upsert({ user_id: await getAuthUserId(), schedule_id: scheduleId, status }, { onConflict: 'user_id,schedule_id' });
     if (error) throw error;
     return;
   }
@@ -68,7 +69,7 @@ export async function getMyRsvp(scheduleId: string): Promise<Rsvp | undefined> {
       .from('rsvps')
       .select('*')
       .eq('schedule_id', scheduleId)
-      .eq('user_id', CURRENT_USER_ID)
+      .eq('user_id', await getAuthUserId())
       .maybeSingle();
     return (data as Rsvp) ?? undefined;
   }
@@ -79,7 +80,7 @@ export async function checkIn(scheduleId: string): Promise<Attendance> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
       .from('attendances')
-      .insert({ user_id: CURRENT_USER_ID, schedule_id: scheduleId })
+      .insert({ user_id: await getAuthUserId(), schedule_id: scheduleId })
       .select()
       .single();
     if (error) throw error;
