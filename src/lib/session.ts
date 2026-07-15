@@ -37,9 +37,14 @@ export async function signInWithIdentifier(identifier: string, code: string): Pr
 
 // Retrofits accounts created before this login flow existed (e.g. via the
 // old silent-anonymous flow) so they can log in from other devices too.
+// Goes through the activate_phone_login() RPC (migration 0010) rather than
+// auth.updateUser({ email, password }) directly — that call bundles an email
+// change with the password change, and the email side can get stuck pending
+// confirmation indefinitely for a fake @agit.local address, leaving the
+// password in an unknown state. The RPC applies both in one transaction.
 export async function activateLoginForCurrentAccount(phone: string): Promise<void> {
   if (!isSupabaseConfigured || !supabase) throw new Error('Supabase is not configured');
-  const { error } = await supabase.auth.updateUser({ email: randomFakeEmail(), password: phoneLoginCode(phone) });
+  const { error } = await supabase.rpc('activate_phone_login', { new_phone: phone });
   if (error) throw error;
 }
 
