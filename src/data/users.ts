@@ -24,6 +24,17 @@ export async function getCurrentUser(): Promise<AppUser | null> {
 export async function logIn(identifier: string, code: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     await signInWithIdentifier(identifier, code);
+    // Correct credentials alone aren't enough to get into the app - only an
+    // approved (active) member is let past the login screen. Sign back out
+    // immediately so a pending/expelled account never ends up with a live
+    // session, rather than relying on a post-login gate to hide the app.
+    const user = await getCurrentUser();
+    if (!user || user.status !== 'active') {
+      await signOut();
+      if (user?.status === 'pending') throw new Error('아직 마스터 승인 대기 중이에요. 승인 후 다시 로그인해주세요.');
+      if (user?.status === 'expelled') throw new Error('탈퇴 처리된 계정이에요.');
+      throw new Error('로그인할 수 없는 계정이에요.');
+    }
     return;
   }
   // Mock mode has a single always-logged-in user; nothing to do.
@@ -92,6 +103,16 @@ export async function rejectMember(userId: string): Promise<void> {
   if (idx >= 0) mockUsers.splice(idx, 1);
 }
 
+export async function deleteMember(userId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.rpc('delete_member', { target_id: userId });
+    if (error) throw error;
+    return;
+  }
+  const idx = mockUsers.findIndex((u) => u.id === userId);
+  if (idx >= 0) mockUsers.splice(idx, 1);
+}
+
 export async function setMemberTier(userId: string, tier: AppUser['tier']): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     const { error } = await supabase.from('users').update({ tier }).eq('id', userId);
@@ -123,6 +144,10 @@ export async function signUp(input: {
       status: 'pending',
     });
     if (error) throw error;
+    // signUpAccount() leaves the new account signed in; sign back out so a
+    // pending (not yet approved) account never gets a live session - same
+    // "only an approved member gets in" rule as logIn().
+    await signOut();
     return;
   }
   mockUsers.push({

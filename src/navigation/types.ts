@@ -19,7 +19,6 @@ export type HomeStackParamList = {
   Members: undefined;
   Rules: undefined;
   Store: undefined;
-  PendingApproval: undefined;
   NewNotice: undefined;
 };
 

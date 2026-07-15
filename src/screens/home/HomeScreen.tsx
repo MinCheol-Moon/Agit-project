@@ -89,12 +89,6 @@ export default function HomeScreen({ navigation }: Props) {
         <Text style={styles.progressLabel}>이번 달 출석 {user?.monthlyAttendance ?? 0}/4회</Text>
       </View>
 
-      {user?.status === 'pending' && (
-        <TouchableOpacity style={styles.banner} onPress={() => navigation.navigate('PendingApproval')}>
-          <Text style={styles.bannerText}>가입 승인 대기 중입니다. 눌러서 확인하세요.</Text>
-        </TouchableOpacity>
-      )}
-
       {(notices.length > 0 || canManageNotices) && (
         <View style={styles.noticeSection}>
           <View style={styles.noticeSectionHeader}>
@@ -170,15 +164,6 @@ const styles = StyleSheet.create({
   progressTrack: { height: 6, backgroundColor: colors.cardDarkAlt, borderRadius: 3, overflow: 'hidden', marginTop: spacing.sm },
   progressFill: { height: 6, backgroundColor: colors.gold },
   progressLabel: { color: colors.textMuted, fontSize: 11, marginTop: 6 },
-  banner: {
-    backgroundColor: colors.cream,
-    borderColor: colors.creamBorder,
-    borderWidth: 1,
-    borderRadius: radius.card,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  bannerText: { color: colors.creamText, fontWeight: '600', fontSize: 13 },
   noticeSection: { marginBottom: spacing.lg },
   noticeSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.text },

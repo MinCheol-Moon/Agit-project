@@ -5,7 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { HomeStackParamList } from '../../navigation/types';
-import { approveMember, getRealName, listMembers, listPendingMembers, rejectMember, setMemberTier } from '../../data/users';
+import { approveMember, deleteMember, getRealName, listMembers, listPendingMembers, rejectMember, setMemberTier } from '../../data/users';
 import { AppUser, CREW_LABEL, TIER_LABEL, Tier } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { can } from '../../lib/permissions';
@@ -86,6 +86,31 @@ export default function MembersScreen({ navigation }: Props) {
     }
   };
 
+  const handleDeleteMember = () => {
+    if (!pickerMember) return;
+    const target = pickerMember;
+    Alert.alert(
+      '회원 삭제',
+      `${target.nickname}님을 삭제할까요? 계정과 관련 정보가 모두 삭제되며 되돌릴 수 없습니다.`,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteMember(target.id);
+              setPickerMember(null);
+              load();
+            } catch (e) {
+              Alert.alert('삭제 실패', e instanceof Error ? e.message : String(e));
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <View style={styles.screen}>
       <ScreenHeader
@@ -161,6 +186,12 @@ export default function MembersScreen({ navigation }: Props) {
                 {pickerMember?.tier === t && <Ionicons name="checkmark" size={18} color={colors.gold} />}
               </TouchableOpacity>
             ))}
+            {user?.isMaster && !pickerMember?.isMaster && (
+              <TouchableOpacity style={styles.modalDelete} onPress={handleDeleteMember}>
+                <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                <Text style={styles.modalDeleteText}>회원 삭제</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.modalCancel} onPress={() => setPickerMember(null)}>
               <Text style={styles.modalCancelText}>취소</Text>
             </TouchableOpacity>
@@ -194,4 +225,6 @@ const styles = StyleSheet.create({
   modalRowLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text },
   modalCancel: { alignItems: 'center', paddingVertical: spacing.md, marginTop: spacing.sm },
   modalCancelText: { color: colors.textMuted, fontWeight: '600' },
+  modalDelete: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: spacing.md, marginTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.line },
+  modalDeleteText: { color: colors.danger, fontWeight: '700' },
 });

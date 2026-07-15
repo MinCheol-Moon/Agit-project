@@ -36,7 +36,7 @@ create table schedules (
   start_at timestamptz not null,
   place text not null,
   capacity int not null default 10,
-  created_by uuid not null references users(id),
+  created_by uuid references users(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -65,7 +65,7 @@ create table dues_ledger (
   type ledger_type not null,
   amount numeric not null,
   memo text not null default '',
-  member_id uuid references users(id),
+  member_id uuid references users(id) on delete set null,
   auto_recognized boolean not null default false,
   receipt_url text,
   occurred_at timestamptz not null default now(),
@@ -128,7 +128,7 @@ create table votes (
   title text not null,
   deadline timestamptz not null,
   scope text not null default '전체',
-  created_by uuid references users(id),
+  created_by uuid references users(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -158,8 +158,8 @@ create table tier_logs (
 
 create table real_name_view_logs (
   id uuid primary key default gen_random_uuid(),
-  viewer_id uuid not null references users(id),
-  viewed_user_id uuid not null references users(id),
+  viewer_id uuid not null references users(id) on delete cascade,
+  viewed_user_id uuid not null references users(id) on delete cascade,
   viewed_at timestamptz not null default now()
 );
 
@@ -176,7 +176,7 @@ create table notices (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   body text not null,
-  created_by uuid not null references users(id),
+  created_by uuid references users(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -537,6 +537,28 @@ grant execute on function activate_phone_login(text) to authenticated;
 -- app's "password" is only a 4-digit phone suffix; the client pads it to
 -- `agit-<code>` before it reaches the Auth API (src/lib/session.ts) so a
 -- 4-digit code is always accepted, and the RPC above mirrors the same padding.
+
+-- Lets the master account fully remove a member from 회원 관리. Deleting
+-- auth.users cascades to public.users (its FK), which cascades/detaches
+-- through everything else (see the on delete set null/cascade choices above).
+create or replace function delete_member(target_id uuid) returns void
+language plpgsql security definer set search_path = public, auth as $$
+declare
+  caller_is_master boolean;
+begin
+  select is_master into caller_is_master from users where id = auth.uid();
+  if not coalesce(caller_is_master, false) then
+    raise exception 'Only the master account can delete members';
+  end if;
+  if target_id = auth.uid() then
+    raise exception 'Cannot delete your own account';
+  end if;
+
+  delete from auth.users where id = target_id;
+end;
+$$;
+
+grant execute on function delete_member(uuid) to authenticated;
 
 -- RLS defaults to deny; add delete policies so members can remove their own
 -- messages (group chat and DMs). Both tables already default (primary-key)

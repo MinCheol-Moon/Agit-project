@@ -6,6 +6,7 @@ import { registerForPushNotifications } from '../lib/push';
 import StealthStackNavigator from './StealthStackNavigator';
 import AuthStackNavigator from './AuthStackNavigator';
 import MainTabNavigator from './MainTabNavigator';
+import PendingApprovalScreen from '../screens/auth/PendingApprovalScreen';
 
 function AuthGate() {
   const { user, loading } = useAuth();
@@ -17,7 +18,12 @@ function AuthGate() {
   }, [user]);
 
   if (loading) return null;
-  return user ? <MainTabNavigator /> : <AuthStackNavigator />;
+  if (!user) return <AuthStackNavigator />;
+  // A signed-up account isn't let into the app until the master approves it
+  // (status becomes 'active') - gate here rather than inside the tab
+  // navigator so a pending/expelled member can't just navigate around it.
+  if (user.status !== 'active') return <PendingApprovalScreen status={user.status} />;
+  return <MainTabNavigator />;
 }
 
 export default function RootNavigator() {

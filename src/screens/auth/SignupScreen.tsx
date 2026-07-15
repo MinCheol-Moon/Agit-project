@@ -1,34 +1,53 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { AuthStackParamList } from '../../navigation/types';
 import { signUp } from '../../data/users';
-import { useAuth } from '../../context/AuthContext';
 import { ScreenHeader } from '../../components/ScreenHeader';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 
 export default function SignupScreen({ navigation }: Props) {
-  const { refresh } = useAuth();
   const [realName, setRealName] = useState('');
   const [nickname, setNickname] = useState('');
   const [phone, setPhone] = useState('');
   const [referrer, setReferrer] = useState('');
   const [intro, setIntro] = useState('');
   const [error, setError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async () => {
     if (!realName || !nickname || !phone) return;
     try {
       await signUp({ realName, nickname, phone, referrer, intro });
-      await refresh();
-      // AuthGate (RootNavigator) swaps to MainTabNavigator once `user` is set;
-      // HomeScreen shows the pending-approval banner from there.
+      // signUp() signs the new (pending) account back out - approval is
+      // required before anyone can actually get into the app, so there's
+      // nowhere to navigate to yet. Just confirm the application was sent.
+      setSubmitted(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
   };
+
+  if (submitted) {
+    return (
+      <View style={styles.screen}>
+        <ScreenHeader title="가입 신청" />
+        <View style={styles.submittedContent}>
+          <Ionicons name="checkmark-circle-outline" size={40} color={colors.gold} />
+          <Text style={styles.submittedTitle}>가입 신청이 접수되었습니다</Text>
+          <Text style={styles.submittedDesc}>
+            마스터가 승인하면 로그인할 수 있어요.{'\n'}승인 전에는 로그인이 되지 않아요.
+          </Text>
+          <TouchableOpacity style={styles.submitButton} onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.submitText}>로그인 화면으로</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -73,4 +92,7 @@ const styles = StyleSheet.create({
   submitButton: { backgroundColor: colors.gold, borderRadius: radius.card, alignItems: 'center', paddingVertical: 16, marginTop: spacing.xxl },
   submitText: { color: colors.white, fontWeight: '700', fontSize: 15 },
   error: { color: colors.danger, fontSize: 12, marginTop: spacing.md },
+  submittedContent: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxl, gap: spacing.md },
+  submittedTitle: { fontSize: 17, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  submittedDesc: { fontSize: 13, color: colors.textMuted, textAlign: 'center', lineHeight: 20, marginBottom: spacing.lg },
 });
