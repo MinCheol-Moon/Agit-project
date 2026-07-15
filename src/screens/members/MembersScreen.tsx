@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { HomeStackParamList } from '../../navigation/types';
 import { approveMember, getRealName, listMembers, listPendingMembers, rejectMember, setMemberTier } from '../../data/users';
@@ -134,9 +135,12 @@ export default function MembersScreen({ navigation }: Props) {
               onPress={() => cycleTier(m)}
             >
               <View style={{ flex: 1 }}>
-                <Text style={styles.memberName}>
-                  {m.nickname} {showRealName ? `· ${nameFor(m)}` : ''} {m.isMaster ? '👑' : ''}
-                </Text>
+                <View style={styles.memberNameRow}>
+                  <Text style={styles.memberName}>
+                    {m.nickname} {showRealName ? `· ${nameFor(m)}` : ''}
+                  </Text>
+                  {m.isMaster && <Ionicons name="star" size={14} color={colors.gold} />}
+                </View>
                 <Text style={styles.memberMeta}>{m.crews.map((c) => CREW_LABEL[c]).join(', ')} · 이달 {m.monthlyAttendance}회 출석</Text>
               </View>
               <TierBadge tier={m.tier} size="sm" />
@@ -161,6 +165,7 @@ const styles = StyleSheet.create({
   rejectButton: { backgroundColor: colors.danger, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6 },
   rejectText: { color: colors.white, fontWeight: '700', fontSize: 12 },
   memberRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.line },
+  memberNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   memberName: { fontSize: 14, fontWeight: '700', color: colors.text },
   memberMeta: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
 });

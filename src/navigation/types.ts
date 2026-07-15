@@ -5,6 +5,12 @@ export type StealthStackParamList = {
   Pin: undefined;
 };
 
+export type AuthStackParamList = {
+  Welcome: undefined;
+  Login: undefined;
+  Signup: undefined;
+};
+
 export type HomeStackParamList = {
   Home: undefined;
   Attendance: undefined;
@@ -13,8 +19,6 @@ export type HomeStackParamList = {
   Members: undefined;
   Rules: undefined;
   Store: undefined;
-  Signup: undefined;
-  Login: undefined;
   PendingApproval: undefined;
 };
 

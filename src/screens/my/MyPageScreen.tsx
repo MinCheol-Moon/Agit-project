@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { MyStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
@@ -59,7 +60,10 @@ export default function MyPageScreen({ navigation }: Props) {
             <Text style={styles.statLabel}>누적 출석</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>🏆 {user.totalAttendance > 50 ? 3 : user.totalAttendance > 20 ? 2 : 1}</Text>
+            <View style={styles.trophyRow}>
+              <Ionicons name="trophy" size={16} color={colors.goldLight} />
+              <Text style={styles.statValue}>{user.totalAttendance > 50 ? 3 : user.totalAttendance > 20 ? 2 : 1}</Text>
+            </View>
             <Text style={styles.statLabel}>트로피</Text>
           </View>
         </View>
@@ -110,6 +114,7 @@ const styles = StyleSheet.create({
   crews: { color: colors.textMuted, fontSize: 12, marginBottom: spacing.lg },
   statsRow: { flexDirection: 'row', gap: spacing.xl },
   statItem: { alignItems: 'center' },
+  trophyRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statValue: { color: colors.goldLight, fontSize: 18, fontWeight: '800' },
   statLabel: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
   section: { backgroundColor: colors.white, borderRadius: radius.card, borderWidth: 1, borderColor: colors.line, padding: spacing.lg },

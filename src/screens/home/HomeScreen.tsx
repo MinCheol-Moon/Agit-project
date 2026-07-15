@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { HomeStackParamList, MainTabParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
@@ -16,16 +17,18 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'Home'>;
 
 type Nav = CompositeNavigationProp<Props['navigation'], BottomTabNavigationProp<MainTabParamList>>;
 
-const GRID_ITEMS: { key: string; label: string; icon: string; permission: PermissionKey; action: (nav: Nav) => void }[] = [
-  { key: 'schedule', label: '일정', icon: '📅', permission: 'viewBasicSchedule', action: (nav) => nav.navigate('ScheduleTab', { screen: 'ScheduleList' }) },
-  { key: 'attendance', label: '출석', icon: '✅', permission: 'attendance', action: (nav) => nav.navigate('HomeTab', { screen: 'Attendance' }) },
-  { key: 'dues', label: '회비', icon: '💰', permission: 'viewDuesExpenses', action: (nav) => nav.navigate('HomeTab', { screen: 'Dues' }) },
-  { key: 'vote', label: '투표', icon: '🗳️', permission: 'vote', action: (nav) => nav.navigate('HomeTab', { screen: 'Vote' }) },
-  { key: 'chat', label: '채팅', icon: '💬', permission: 'chat', action: (nav) => nav.navigate('ChatTab', { screen: 'ChatRoomList' }) },
-  { key: 'gallery', label: '갤러리', icon: '🖼️', permission: 'community', action: (nav) => nav.navigate('CommunityTab', { screen: 'CommunityFeed' }) },
-  { key: 'members', label: '멤버', icon: '👥', permission: 'memberList', action: (nav) => nav.navigate('HomeTab', { screen: 'Members' }) },
-  { key: 'rules', label: '회칙', icon: '📖', permission: 'viewBasicSchedule', action: (nav) => nav.navigate('MyTab', { screen: 'Rules' }) },
-  { key: 'store', label: '스토어', icon: '🛍️', permission: 'viewBasicSchedule', action: (nav) => nav.navigate('HomeTab', { screen: 'Store' }) },
+type IconName = keyof typeof Ionicons.glyphMap;
+
+const GRID_ITEMS: { key: string; label: string; icon: IconName; permission: PermissionKey; action: (nav: Nav) => void }[] = [
+  { key: 'schedule', label: '일정', icon: 'calendar-outline', permission: 'viewBasicSchedule', action: (nav) => nav.navigate('ScheduleTab', { screen: 'ScheduleList' }) },
+  { key: 'attendance', label: '출석', icon: 'checkmark-circle-outline', permission: 'attendance', action: (nav) => nav.navigate('HomeTab', { screen: 'Attendance' }) },
+  { key: 'dues', label: '회비', icon: 'wallet-outline', permission: 'viewDuesExpenses', action: (nav) => nav.navigate('HomeTab', { screen: 'Dues' }) },
+  { key: 'vote', label: '투표', icon: 'bar-chart-outline', permission: 'vote', action: (nav) => nav.navigate('HomeTab', { screen: 'Vote' }) },
+  { key: 'chat', label: '채팅', icon: 'chatbubbles-outline', permission: 'chat', action: (nav) => nav.navigate('ChatTab', { screen: 'ChatRoomList' }) },
+  { key: 'gallery', label: '갤러리', icon: 'images-outline', permission: 'community', action: (nav) => nav.navigate('CommunityTab', { screen: 'CommunityFeed' }) },
+  { key: 'members', label: '멤버', icon: 'people-outline', permission: 'memberList', action: (nav) => nav.navigate('HomeTab', { screen: 'Members' }) },
+  { key: 'rules', label: '회칙', icon: 'book-outline', permission: 'viewBasicSchedule', action: (nav) => nav.navigate('MyTab', { screen: 'Rules' }) },
+  { key: 'store', label: '스토어', icon: 'storefront-outline', permission: 'viewBasicSchedule', action: (nav) => nav.navigate('HomeTab', { screen: 'Store' }) },
 ];
 
 export default function HomeScreen({ navigation }: Props) {
@@ -67,19 +70,6 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.bannerText}>가입 승인 대기 중입니다. 눌러서 확인하세요.</Text>
         </TouchableOpacity>
       )}
-      {!user && (
-        <View style={styles.banner}>
-          <Text style={styles.bannerText}>아지트 가입하고 모든 기능을 이용해보세요</Text>
-          <View style={styles.bannerRow}>
-            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-              <Text style={styles.bannerLink}>가입 신청 →</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.bannerLink}>이미 회원이신가요? 로그인 →</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
 
       {upcoming && (
         <View style={styles.upcomingCard}>
@@ -102,7 +92,7 @@ export default function HomeScreen({ navigation }: Props) {
               onPress={() => item.action(nav)}
               activeOpacity={0.7}
             >
-              <Text style={styles.gridIcon}>{unlocked ? item.icon : '🔒'}</Text>
+              <Ionicons name={unlocked ? item.icon : 'lock-closed-outline'} size={24} color={unlocked ? colors.text : colors.textMuted} />
               <Text style={styles.gridLabel}>{item.label}</Text>
             </TouchableOpacity>
           );
@@ -138,9 +128,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
-  bannerText: { color: colors.creamText, fontWeight: '600', fontSize: 13, marginBottom: spacing.sm },
-  bannerRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  bannerLink: { color: colors.creamText, fontWeight: '700', fontSize: 12, textDecorationLine: 'underline' },
+  bannerText: { color: colors.creamText, fontWeight: '600', fontSize: 13 },
   upcomingCard: {
     backgroundColor: colors.white,
     borderRadius: radius.card,
@@ -164,6 +152,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
-  gridIcon: { fontSize: 24 },
   gridLabel: { fontSize: 12, color: colors.text, fontWeight: '600' },
 });

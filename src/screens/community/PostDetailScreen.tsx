@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { CommunityStackParamList } from '../../navigation/types';
 import { likePost, listPosts } from '../../data/community';
@@ -43,7 +44,8 @@ export default function PostDetailScreen({ route, navigation }: Props) {
         <Text style={styles.title}>{post.title}</Text>
         <Text style={styles.body}>{post.body}</Text>
         <TouchableOpacity style={styles.likeButton} onPress={handleLike}>
-          <Text style={styles.likeText}>❤️ {post.likeCount}</Text>
+          <Ionicons name="heart" size={16} color={colors.danger} />
+          <Text style={styles.likeText}>{post.likeCount}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -55,6 +57,6 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg },
   title: { fontSize: 20, fontWeight: '800', color: colors.text, marginBottom: spacing.md },
   body: { fontSize: 15, color: colors.text, lineHeight: 22, marginBottom: spacing.xl },
-  likeButton: { alignSelf: 'flex-start', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, paddingHorizontal: spacing.lg, paddingVertical: 10 },
+  likeButton: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, paddingHorizontal: spacing.lg, paddingVertical: 10 },
   likeText: { fontWeight: '700', color: colors.text },
 });

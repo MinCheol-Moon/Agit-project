@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { CommunityStackParamList } from '../../navigation/types';
 import { listPopularPosts, listPosts } from '../../data/community';
@@ -54,7 +55,8 @@ export default function CommunityScreen({ navigation }: Props) {
               <Text style={styles.sectionTitle}>이주의 인기글</Text>
               {popular.map((p) => (
                 <TouchableOpacity key={p.id} style={styles.popularChip} onPress={() => navigation.navigate('PostDetail', { postId: p.id })}>
-                  <Text style={styles.popularText} numberOfLines={1}>❤️ {p.likeCount} · {p.title}</Text>
+                  <Ionicons name="heart" size={12} color={colors.creamText} />
+                  <Text style={styles.popularText} numberOfLines={1}>{p.likeCount} · {p.title}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -65,8 +67,14 @@ export default function CommunityScreen({ navigation }: Props) {
             <Text style={styles.cardTitle}>{item.title}</Text>
             <Text style={styles.cardBody} numberOfLines={2}>{item.body}</Text>
             <View style={styles.cardFooter}>
-              <Text style={styles.cardMeta}>❤️ {item.likeCount}</Text>
-              <Text style={styles.cardMeta}>💬 {item.commentCount}</Text>
+              <View style={styles.cardMetaRow}>
+                <Ionicons name="heart-outline" size={14} color={colors.textMuted} />
+                <Text style={styles.cardMeta}>{item.likeCount}</Text>
+              </View>
+              <View style={styles.cardMetaRow}>
+                <Ionicons name="chatbubble-outline" size={14} color={colors.textMuted} />
+                <Text style={styles.cardMeta}>{item.commentCount}</Text>
+              </View>
             </View>
           </TouchableOpacity>
         )}
@@ -84,11 +92,12 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
   popularSection: { marginBottom: spacing.lg },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
-  popularChip: { backgroundColor: colors.cream, borderColor: colors.creamBorder, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 8, marginBottom: spacing.xs },
+  popularChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.cream, borderColor: colors.creamBorder, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 8, marginBottom: spacing.xs },
   popularText: { color: colors.creamText, fontSize: 12, fontWeight: '600' },
   card: { backgroundColor: colors.white, borderRadius: radius.card, borderWidth: 1, borderColor: colors.line, padding: spacing.lg },
   cardTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 4 },
   cardBody: { fontSize: 13, color: colors.textMuted, marginBottom: spacing.sm },
   cardFooter: { flexDirection: 'row', gap: spacing.md },
+  cardMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cardMeta: { fontSize: 12, color: colors.textMuted },
 });

@@ -3,6 +3,7 @@ import { Alert, FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } f
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { HomeStackParamList } from '../../navigation/types';
 import { checkIn, listEarlyBirds, listSchedules } from '../../data/schedules';
@@ -13,7 +14,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Attendance'>;
 
-const TROPHIES = ['🥇', '🥈', '🥉'];
+const TROPHY_COLORS = [colors.gold, '#c0c0c0', '#cd7f32'];
 
 export default function AttendanceScreen({ navigation }: Props) {
   const { user, refresh } = useAuth();
@@ -102,7 +103,11 @@ export default function AttendanceScreen({ navigation }: Props) {
           contentContainerStyle={{ paddingBottom: spacing.xxl }}
           renderItem={({ item, index }) => (
             <View style={styles.rankRow}>
-              <Text style={styles.rankTrophy}>{TROPHIES[index] ?? `${index + 1}`}</Text>
+              {index < 3 ? (
+                <Ionicons name="trophy" size={18} color={TROPHY_COLORS[index]} style={styles.rankTrophyIcon} />
+              ) : (
+                <Text style={styles.rankTrophy}>{index + 1}</Text>
+              )}
               <Text style={styles.rankName}>{item.nickname}</Text>
               <Text style={styles.rankTime}>{new Date(item.checkedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</Text>
             </View>
@@ -142,7 +147,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     gap: spacing.md,
   },
-  rankTrophy: { fontSize: 16, width: 28 },
+  rankTrophy: { fontSize: 16, width: 28, textAlign: 'center', color: colors.textMuted },
+  rankTrophyIcon: { width: 28, textAlign: 'center' },
   rankName: { flex: 1, fontWeight: '600', color: colors.text },
   rankTime: { color: colors.textMuted, fontSize: 12 },
 });

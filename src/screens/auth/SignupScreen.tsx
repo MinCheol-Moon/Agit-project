@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radius, spacing } from '../../theme/colors';
-import { HomeStackParamList } from '../../navigation/types';
+import { AuthStackParamList } from '../../navigation/types';
 import { signUp } from '../../data/users';
 import { useAuth } from '../../context/AuthContext';
 import { ScreenHeader } from '../../components/ScreenHeader';
 
-type Props = NativeStackScreenProps<HomeStackParamList, 'Signup'>;
+type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 
 export default function SignupScreen({ navigation }: Props) {
   const { refresh } = useAuth();
@@ -23,7 +23,8 @@ export default function SignupScreen({ navigation }: Props) {
     try {
       await signUp({ realName, nickname, phone, referrer, intro });
       await refresh();
-      navigation.replace('PendingApproval');
+      // AuthGate (RootNavigator) swaps to MainTabNavigator once `user` is set;
+      // HomeScreen shows the pending-approval banner from there.
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }

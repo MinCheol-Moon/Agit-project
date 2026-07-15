@@ -8,8 +8,6 @@ import VoteScreen from '../screens/vote/VoteScreen';
 import MembersScreen from '../screens/members/MembersScreen';
 import RulesScreen from '../screens/my/RulesScreen';
 import StoreScreen from '../screens/home/StoreScreen';
-import SignupScreen from '../screens/auth/SignupScreen';
-import LoginScreen from '../screens/auth/LoginScreen';
 import PendingApprovalScreen from '../screens/auth/PendingApprovalScreen';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -25,8 +23,6 @@ export default function HomeStackNavigator() {
       {/* Rules also lives in MyStack; kept here so Home-grid navigation works without cross-tab jump */}
       <Stack.Screen name="Rules" component={RulesScreen} />
       <Stack.Screen name="Store" component={StoreScreen} />
-      <Stack.Screen name="Signup" component={SignupScreen} />
-      <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
     </Stack.Navigator>
   );

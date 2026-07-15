@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing } from '../../theme/colors';
-import { HomeStackParamList } from '../../navigation/types';
+import { AuthStackParamList } from '../../navigation/types';
 import { logIn } from '../../data/users';
 import { useAuth } from '../../context/AuthContext';
 import { ShuffledKeypad } from '../../components/ShuffledKeypad';
 
-type Props = NativeStackScreenProps<HomeStackParamList, 'Login'>;
+type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
   const { refresh } = useAuth();
@@ -26,7 +26,7 @@ export default function LoginScreen({ navigation }: Props) {
       try {
         await logIn(identifier, next);
         await refresh();
-        navigation.replace('Home');
+        // AuthGate (RootNavigator) swaps to MainTabNavigator once `user` is set.
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
         setCode('');
