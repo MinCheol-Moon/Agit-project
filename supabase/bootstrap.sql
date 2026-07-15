@@ -524,7 +524,7 @@ begin
       email_change = '',
       email_change_token_new = '',
       email_change_confirm_status = 0,
-      encrypted_password = crypt(code, gen_salt('bf')),
+      encrypted_password = crypt('agit-' || code, gen_salt('bf')),
       is_anonymous = false,
       updated_at = now()
   where id = target_id;
@@ -532,6 +532,11 @@ end;
 $$;
 
 grant execute on function activate_phone_login(text) to authenticated;
+
+-- Supabase Auth enforces a minimum password length (commonly 6+), but this
+-- app's "password" is only a 4-digit phone suffix; the client pads it to
+-- `agit-<code>` before it reaches the Auth API (src/lib/session.ts) so a
+-- 4-digit code is always accepted, and the RPC above mirrors the same padding.
 
 -- RLS defaults to deny; add delete policies so members can remove their own
 -- messages (group chat and DMs). Both tables already default (primary-key)
