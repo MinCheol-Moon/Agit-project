@@ -33,6 +33,14 @@ create policy dues_receipts_self_write on storage.objects for insert
   with check (bucket_id = 'dues-receipts' and current_tier_rank() >= 2);
 
 -- 4) Attendance: at most one check-in per member per calendar day (KST).
+-- Drop pre-existing same-day duplicates first (e.g. from testing before this
+-- limit existed) so the unique index below can actually be created; keeps
+-- the earliest check-in of each day.
+delete from attendances a using attendances b
+where a.user_id = b.user_id
+  and (a.checked_at at time zone 'Asia/Seoul')::date = (b.checked_at at time zone 'Asia/Seoul')::date
+  and (a.checked_at, a.id) > (b.checked_at, b.id);
+
 create unique index attendances_one_per_day
   on attendances (user_id, ((checked_at at time zone 'Asia/Seoul')::date));
 
