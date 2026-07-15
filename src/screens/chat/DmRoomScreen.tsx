@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,8 @@ import { deleteDirectMessage, listDirectMessages, sendDirectMessage, subscribeTo
 import { DirectMessage } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { confirmDestructive } from '../../lib/confirm';
+import { alert } from '../../lib/alert';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'DmRoom'>;
 
@@ -52,26 +54,19 @@ export default function DmRoomScreen({ route, navigation }: Props) {
       const message = await sendDirectMessage(otherUserId, body);
       setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
     } catch (e) {
-      Alert.alert('전송 실패', e instanceof Error ? e.message : String(e));
+      alert('전송 실패', e instanceof Error ? e.message : String(e));
     }
   };
 
   const handleDelete = (messageId: string) => {
-    Alert.alert('메시지 삭제', '이 메시지를 삭제할까요?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '삭제',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteDirectMessage(messageId);
-            setMessages((prev) => prev.filter((m) => m.id !== messageId));
-          } catch (e) {
-            Alert.alert('삭제 실패', e instanceof Error ? e.message : String(e));
-          }
-        },
-      },
-    ]);
+    confirmDestructive('메시지 삭제', '이 메시지를 삭제할까요?', async () => {
+      try {
+        await deleteDirectMessage(messageId);
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      } catch (e) {
+        alert('삭제 실패', e instanceof Error ? e.message : String(e));
+      }
+    });
   };
 
   return (

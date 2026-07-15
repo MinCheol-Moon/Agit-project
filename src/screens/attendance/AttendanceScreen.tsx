@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -11,6 +11,7 @@ import { Attendance, Schedule } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { listMembers } from '../../data/users';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { alert } from '../../lib/alert';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Attendance'>;
 
@@ -51,9 +52,9 @@ export default function AttendanceScreen({ navigation }: Props) {
       setScanning(false);
       await load();
       await refresh();
-      Alert.alert('체크인 완료', '출석이 등록되었습니다.');
+      alert('체크인 완료', '출석이 등록되었습니다.');
     } catch (e) {
-      Alert.alert('체크인 실패', e instanceof Error ? e.message : String(e));
+      alert('체크인 실패', e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -61,7 +62,7 @@ export default function AttendanceScreen({ navigation }: Props) {
     if (!permission?.granted) {
       const res = await requestPermission();
       if (!res.granted) {
-        Alert.alert('카메라 권한이 필요합니다. 수동 체크인으로 진행할게요.');
+        alert('카메라 권한이 필요합니다. 수동 체크인으로 진행할게요.');
         handleCheckIn();
         return;
       }

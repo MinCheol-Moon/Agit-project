@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,8 @@ import { deleteNotice, listNotices } from '../../data/notices';
 import { Schedule, Notice, CREW_LABEL } from '../../types';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { confirmDestructive } from '../../lib/confirm';
+import { alert } from '../../lib/alert';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Home'>;
 
@@ -49,21 +51,14 @@ export default function HomeScreen({ navigation }: Props) {
   );
 
   const handleDeleteNotice = (noticeId: string) => {
-    Alert.alert('공지 삭제', '이 공지를 삭제할까요?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '삭제',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteNotice(noticeId);
-            setNotices((prev) => prev.filter((n) => n.id !== noticeId));
-          } catch (e) {
-            Alert.alert('삭제 실패', e instanceof Error ? e.message : String(e));
-          }
-        },
-      },
-    ]);
+    confirmDestructive('공지 삭제', '이 공지를 삭제할까요?', async () => {
+      try {
+        await deleteNotice(noticeId);
+        setNotices((prev) => prev.filter((n) => n.id !== noticeId));
+      } catch (e) {
+        alert('삭제 실패', e instanceof Error ? e.message : String(e));
+      }
+    });
   };
 
   return (

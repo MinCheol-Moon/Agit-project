@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -10,7 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppLock } from '../../context/AppLockContext';
 import { TierBadge } from '../../components/TierBadge';
 import { CREW_LABEL } from '../../types';
-import { activateMultiDeviceLogin, logOut } from '../../data/users';
+import { logOut } from '../../data/users';
 
 type Props = NativeStackScreenProps<MyStackParamList, 'MyPage'>;
 type Nav = CompositeNavigationProp<Props['navigation'], BottomTabNavigationProp<MainTabParamList>>;
@@ -19,16 +19,6 @@ export default function MyPageScreen({ navigation }: Props) {
   const nav = useNavigation<Nav>();
   const { user, refresh } = useAuth();
   const { lock } = useAppLock();
-
-  const handleActivateLogin = async () => {
-    if (!user) return;
-    try {
-      await activateMultiDeviceLogin(user.phone);
-      Alert.alert('활성화 완료', `이제 다른 기기에서 "${user.nickname}" 또는 실명 + 전화번호 뒷 4자리로 로그인할 수 있어요.`);
-    } catch (e) {
-      Alert.alert('활성화 실패', e instanceof Error ? e.message : String(e));
-    }
-  };
 
   const handleLogOut = async () => {
     await logOut();
@@ -95,12 +85,6 @@ export default function MyPageScreen({ navigation }: Props) {
       )}
       <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('Rules')}>
         <Text style={styles.linkText}>회칙 보기</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.linkRow}>
-        <Text style={styles.linkText}>친구 초대 (추천인 등록)</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.linkRow} onPress={handleActivateLogin}>
-        <Text style={styles.linkText}>다른 기기 로그인 활성화</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.linkRow} onPress={handleLogOut}>
         <Text style={styles.linkText}>로그아웃</Text>

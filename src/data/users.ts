@@ -1,5 +1,5 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
-import { activateLoginForCurrentAccount, signInWithIdentifier, signOut, signUpAccount } from '../lib/session';
+import { signInWithIdentifier, signOut, signUpAccount } from '../lib/session';
 import { camelizeDeep } from '../lib/caseMap';
 import { AppUser } from '../types';
 import { CURRENT_USER_ID, mockUsers } from './mockStore';
@@ -42,13 +42,6 @@ export async function logIn(identifier: string, code: string): Promise<void> {
 
 export async function logOut(): Promise<void> {
   await signOut();
-}
-
-// One-time retrofit for accounts created before phone-code login existed.
-export async function activateMultiDeviceLogin(phone: string): Promise<void> {
-  if (isSupabaseConfigured && supabase) {
-    await activateLoginForCurrentAccount(phone);
-  }
 }
 
 export async function listMembers(): Promise<AppUser[]> {

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
@@ -22,6 +22,7 @@ import { useAuth } from '../../context/AuthContext';
 import { can } from '../../lib/permissions';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { GateGuard } from '../../components/GateGuard';
+import { alert } from '../../lib/alert';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Dues'>;
 
@@ -60,7 +61,7 @@ export default function DuesScreen({ navigation }: Props) {
       const ocr = await uploadReceiptAndRecognize(result.assets[0].uri);
       setOcrPreview(ocr);
     } catch (e) {
-      Alert.alert('업로드 실패', e instanceof Error ? e.message : String(e));
+      alert('업로드 실패', e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -72,14 +73,14 @@ export default function DuesScreen({ navigation }: Props) {
       setOcrPreview(null);
       load();
     } catch (e) {
-      Alert.alert('등록 실패', e instanceof Error ? e.message : String(e));
+      alert('등록 실패', e instanceof Error ? e.message : String(e));
     }
   };
 
   const handleSelfUpload = async () => {
     const amount = Number(selfAmount) || settings?.monthlyFee || 0;
     if (!amount) {
-      Alert.alert('금액을 입력해주세요.');
+      alert('금액을 입력해주세요.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
@@ -89,9 +90,9 @@ export default function DuesScreen({ navigation }: Props) {
       await uploadOwnReceipt(result.assets[0].uri, amount);
       setSelfAmount('');
       await load();
-      Alert.alert('등록 완료', '납부 내역이 등록되었습니다.');
+      alert('등록 완료', '납부 내역이 등록되었습니다.');
     } catch (e) {
-      Alert.alert('업로드 실패', e instanceof Error ? e.message : String(e));
+      alert('업로드 실패', e instanceof Error ? e.message : String(e));
     } finally {
       setSelfUploading(false);
     }
@@ -104,7 +105,7 @@ export default function DuesScreen({ navigation }: Props) {
     try {
       await updateDuesSettings(next);
     } catch (e) {
-      Alert.alert('설정 저장 실패', e instanceof Error ? e.message : String(e));
+      alert('설정 저장 실패', e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -219,7 +220,7 @@ export default function DuesScreen({ navigation }: Props) {
                       setExpenseForm(null);
                       load();
                     } catch (e) {
-                      Alert.alert('지출 등록 실패', e instanceof Error ? e.message : String(e));
+                      alert('지출 등록 실패', e instanceof Error ? e.message : String(e));
                     }
                   }}
                 >

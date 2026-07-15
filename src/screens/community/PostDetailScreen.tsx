@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,8 @@ import { deletePost, likePost, listPosts, updatePost } from '../../data/communit
 import { Post } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { confirmDestructive } from '../../lib/confirm';
+import { alert } from '../../lib/alert';
 
 type Props = NativeStackScreenProps<CommunityStackParamList, 'PostDetail'>;
 
@@ -40,7 +42,7 @@ export default function PostDetailScreen({ route, navigation }: Props) {
       await likePost(postId);
       load();
     } catch (e) {
-      Alert.alert('좋아요 실패', e instanceof Error ? e.message : String(e));
+      alert('좋아요 실패', e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -57,26 +59,19 @@ export default function PostDetailScreen({ route, navigation }: Props) {
       setEditing(false);
       load();
     } catch (e) {
-      Alert.alert('수정 실패', e instanceof Error ? e.message : String(e));
+      alert('수정 실패', e instanceof Error ? e.message : String(e));
     }
   };
 
   const handleDelete = () => {
-    Alert.alert('게시글 삭제', '이 게시글을 삭제할까요?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '삭제',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deletePost(postId);
-            navigation.goBack();
-          } catch (e) {
-            Alert.alert('삭제 실패', e instanceof Error ? e.message : String(e));
-          }
-        },
-      },
-    ]);
+    confirmDestructive('게시글 삭제', '이 게시글을 삭제할까요?', async () => {
+      try {
+        await deletePost(postId);
+        navigation.goBack();
+      } catch (e) {
+        alert('삭제 실패', e instanceof Error ? e.message : String(e));
+      }
+    });
   };
 
   return (

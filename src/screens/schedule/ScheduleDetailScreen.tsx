@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radius, spacing } from '../../theme/colors';
@@ -10,6 +10,7 @@ import { CREW_LABEL, Rsvp, Schedule } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { can } from '../../lib/permissions';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { alert } from '../../lib/alert';
 
 type Props = NativeStackScreenProps<ScheduleStackParamList, 'ScheduleDetail'>;
 
@@ -40,7 +41,7 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
 
   const handleRsvp = async (status: 'yes' | 'no') => {
     if (!can(tier, 'scheduleRsvp')) {
-      Alert.alert('랄잡부터 참석 투표가 가능합니다');
+      alert('랄잡부터 참석 투표가 가능합니다');
       return;
     }
     try {
@@ -50,7 +51,7 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
       listSchedules().then((list) => setSchedule(list.find((s) => s.id === scheduleId) ?? null));
       loadAttendees();
     } catch (e) {
-      Alert.alert('참석 등록 실패', e instanceof Error ? e.message : String(e));
+      alert('참석 등록 실패', e instanceof Error ? e.message : String(e));
     }
   };
 

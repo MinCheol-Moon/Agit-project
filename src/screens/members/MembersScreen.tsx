@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,8 @@ import { useAuth } from '../../context/AuthContext';
 import { can } from '../../lib/permissions';
 import { TierBadge } from '../../components/TierBadge';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { confirmDestructive } from '../../lib/confirm';
+import { alert } from '../../lib/alert';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Members'>;
 
@@ -46,7 +48,7 @@ export default function MembersScreen({ navigation }: Props) {
         const entries = await Promise.all(members.map(async (m) => [m.id, await getRealName(m.id)] as const));
         setRealNames(Object.fromEntries(entries));
       } catch (e) {
-        Alert.alert('실명 조회 실패', e instanceof Error ? e.message : String(e));
+        alert('실명 조회 실패', e instanceof Error ? e.message : String(e));
       }
     }
   };
@@ -58,7 +60,7 @@ export default function MembersScreen({ navigation }: Props) {
       await approveMember(id);
       load();
     } catch (e) {
-      Alert.alert('승인 실패', e instanceof Error ? e.message : String(e));
+      alert('승인 실패', e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -67,14 +69,14 @@ export default function MembersScreen({ navigation }: Props) {
       await rejectMember(id);
       load();
     } catch (e) {
-      Alert.alert('거절 실패', e instanceof Error ? e.message : String(e));
+      alert('거절 실패', e instanceof Error ? e.message : String(e));
     }
   };
 
   const handleSelectTier = async (nextTier: Tier) => {
     if (!pickerMember) return;
     if (nextTier === 'akatsuki' && !user?.isMaster) {
-      Alert.alert('권한 없음', '관리자(아카츠키) 임명은 마스터만 할 수 있습니다.');
+      alert('권한 없음', '관리자(아카츠키) 임명은 마스터만 할 수 있습니다.');
       return;
     }
     try {
@@ -82,32 +84,25 @@ export default function MembersScreen({ navigation }: Props) {
       setPickerMember(null);
       load();
     } catch (e) {
-      Alert.alert('등급 변경 실패', e instanceof Error ? e.message : String(e));
+      alert('등급 변경 실패', e instanceof Error ? e.message : String(e));
     }
   };
 
   const handleDeleteMember = () => {
     if (!pickerMember) return;
     const target = pickerMember;
-    Alert.alert(
+    confirmDestructive(
       '회원 삭제',
       `${target.nickname}님을 삭제할까요? 계정과 관련 정보가 모두 삭제되며 되돌릴 수 없습니다.`,
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteMember(target.id);
-              setPickerMember(null);
-              load();
-            } catch (e) {
-              Alert.alert('삭제 실패', e instanceof Error ? e.message : String(e));
-            }
-          },
-        },
-      ],
+      async () => {
+        try {
+          await deleteMember(target.id);
+          setPickerMember(null);
+          load();
+        } catch (e) {
+          alert('삭제 실패', e instanceof Error ? e.message : String(e));
+        }
+      },
     );
   };
 

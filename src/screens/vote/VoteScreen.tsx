@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radius, spacing } from '../../theme/colors';
@@ -7,6 +7,7 @@ import { HomeStackParamList } from '../../navigation/types';
 import { listVotes, respond } from '../../data/votes';
 import { Vote } from '../../types';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { alert } from '../../lib/alert';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Vote'>;
 
@@ -31,7 +32,7 @@ export default function VoteScreen({ navigation }: Props) {
       await respond(voteId, optionId);
       load();
     } catch (e) {
-      Alert.alert('투표 실패', e instanceof Error ? e.message : String(e));
+      alert('투표 실패', e instanceof Error ? e.message : String(e));
     }
   };
 
