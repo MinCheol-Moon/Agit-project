@@ -20,6 +20,7 @@ export type HomeStackParamList = {
   Rules: undefined;
   Store: undefined;
   PendingApproval: undefined;
+  NewNotice: undefined;
 };
 
 export type ScheduleStackParamList = {

@@ -5,7 +5,17 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, radius, spacing } from '../../theme/colors';
 import { HomeStackParamList } from '../../navigation/types';
-import { addExpense, confirmIncome, getBalance, getDuesSettings, listLedger, updateDuesSettings, uploadReceiptAndRecognize } from '../../data/dues';
+import {
+  addExpense,
+  confirmIncome,
+  getBalance,
+  getDuesSettings,
+  hasPaidThisMonth,
+  listLedger,
+  updateDuesSettings,
+  uploadOwnReceipt,
+  uploadReceiptAndRecognize,
+} from '../../data/dues';
 import { listMembers } from '../../data/users';
 import { DuesLedgerEntry, DuesSettings, AppUser } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -21,8 +31,10 @@ export default function DuesScreen({ navigation }: Props) {
   const [ledger, setLedger] = useState<DuesLedgerEntry[]>([]);
   const [settings, setSettings] = useState<DuesSettings | null>(null);
   const [members, setMembers] = useState<AppUser[]>([]);
-  const [ocrPreview, setOcrPreview] = useState<{ memberName: string; amount: number; occurredAt: string } | null>(null);
+  const [ocrPreview, setOcrPreview] = useState<{ memberName: string; amount: number; occurredAt: string; recognized: boolean } | null>(null);
   const [expenseForm, setExpenseForm] = useState<{ amount: string; memo: string } | null>(null);
+  const [selfAmount, setSelfAmount] = useState('');
+  const [selfUploading, setSelfUploading] = useState(false);
 
   const load = useCallback(async () => {
     const [l, s, m] = await Promise.all([listLedger(), getDuesSettings(), listMembers()]);
@@ -39,7 +51,7 @@ export default function DuesScreen({ navigation }: Props) {
 
   const balance = getBalance(ledger);
   const expenses = ledger.filter((e) => e.type === 'expense');
-  const paidMemberIds = new Set(ledger.filter((e) => e.type === 'income' && e.memberId).map((e) => e.memberId));
+  const myPaidThisMonth = user ? hasPaidThisMonth(ledger, user.id) : false;
 
   const handleUpload = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
@@ -61,6 +73,27 @@ export default function DuesScreen({ navigation }: Props) {
       load();
     } catch (e) {
       Alert.alert('등록 실패', e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const handleSelfUpload = async () => {
+    const amount = Number(selfAmount) || settings?.monthlyFee || 0;
+    if (!amount) {
+      Alert.alert('금액을 입력해주세요.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+    if (result.canceled) return;
+    setSelfUploading(true);
+    try {
+      await uploadOwnReceipt(result.assets[0].uri, amount);
+      setSelfAmount('');
+      await load();
+      Alert.alert('등록 완료', '납부 내역이 등록되었습니다.');
+    } catch (e) {
+      Alert.alert('업로드 실패', e instanceof Error ? e.message : String(e));
+    } finally {
+      setSelfUploading(false);
     }
   };
 
@@ -89,15 +122,43 @@ export default function DuesScreen({ navigation }: Props) {
 
         <GateGuard permission="viewPaymentStatus">
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>납부 현황</Text>
-            {members.map((m) => (
-              <View key={m.id} style={styles.paymentRow}>
-                <Text style={styles.paymentName}>{m.nickname}</Text>
-                <Text style={[styles.paymentStatus, paidMemberIds.has(m.id) ? styles.paid : styles.unpaid]}>
-                  {paidMemberIds.has(m.id) ? '납부완료' : '미납'}
-                </Text>
+            <Text style={styles.sectionTitle}>이번 달 납부 현황</Text>
+            {members.map((m) => {
+              const paid = hasPaidThisMonth(ledger, m.id);
+              return (
+                <View key={m.id} style={styles.paymentRow}>
+                  <Text style={styles.paymentName}>{m.nickname}</Text>
+                  <Text style={[styles.paymentStatus, paid ? styles.paid : styles.unpaid]}>
+                    {paid ? '완납' : '미납'}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </GateGuard>
+
+        <GateGuard permission="selfUploadReceipt">
+          <View style={styles.section}>
+            <View style={styles.paymentRow}>
+              <Text style={styles.sectionTitle}>내 회비 납부</Text>
+              <Text style={[styles.paymentStatus, myPaidThisMonth ? styles.paid : styles.unpaid]}>
+                {myPaidThisMonth ? '완납' : '미납'}
+              </Text>
+            </View>
+            {!myPaidThisMonth && (
+              <View style={styles.ocrPreview}>
+                <TextInput
+                  style={styles.ocrInput}
+                  placeholder={`금액 (기본 ${settings?.monthlyFee.toLocaleString() ?? ''}원)`}
+                  keyboardType="number-pad"
+                  value={selfAmount}
+                  onChangeText={setSelfAmount}
+                />
+                <TouchableOpacity style={styles.uploadButton} onPress={handleSelfUpload} disabled={selfUploading}>
+                  <Text style={styles.uploadButtonText}>{selfUploading ? '업로드 중...' : '입금 캡처 올리고 납부 등록'}</Text>
+                </TouchableOpacity>
               </View>
-            ))}
+            )}
           </View>
         </GateGuard>
 
@@ -109,7 +170,10 @@ export default function DuesScreen({ navigation }: Props) {
             </TouchableOpacity>
             {ocrPreview && (
               <View style={styles.ocrPreview}>
-                <Text style={styles.ocrTag}>자동인식</Text>
+                <Text style={styles.ocrTag}>{ocrPreview.recognized ? '자동인식' : '직접 입력'}</Text>
+                {!ocrPreview.recognized && (
+                  <Text style={styles.ocrHint}>자동 인식에 실패했어요. 회원명과 금액을 직접 입력해주세요.</Text>
+                )}
                 <TextInput
                   style={styles.ocrInput}
                   value={ocrPreview.memberName}
@@ -202,6 +266,7 @@ const styles = StyleSheet.create({
   uploadButtonText: { color: colors.white, fontWeight: '700' },
   ocrPreview: { marginTop: spacing.md, gap: spacing.sm },
   ocrTag: { alignSelf: 'flex-start', backgroundColor: colors.cream, color: colors.creamText, fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.pill },
+  ocrHint: { color: colors.textMuted, fontSize: 12 },
   ocrInput: { borderWidth: 1, borderColor: colors.line, borderRadius: radius.tile, paddingHorizontal: spacing.md, paddingVertical: 10 },
   confirmButton: { backgroundColor: colors.success, borderRadius: radius.pill, paddingVertical: 10, alignItems: 'center' },
   confirmButtonText: { color: colors.white, fontWeight: '700' },

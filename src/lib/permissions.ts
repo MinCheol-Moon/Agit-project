@@ -16,6 +16,7 @@ export const PERMISSIONS = {
   viewDuesBalance: 2,
   chat: 2,
   scheduleJoinFree: 2,
+  selfUploadReceipt: 2,
   viewPaymentStatus: 3,
   community: 3,
   vote: 3,

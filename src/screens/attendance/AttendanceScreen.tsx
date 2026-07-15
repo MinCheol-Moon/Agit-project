@@ -6,7 +6,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { HomeStackParamList } from '../../navigation/types';
-import { checkIn, listEarlyBirds, listSchedules } from '../../data/schedules';
+import { checkIn, hasCheckedInToday, listEarlyBirds, listSchedules } from '../../data/schedules';
 import { Attendance, Schedule } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { listMembers } from '../../data/users';
@@ -28,6 +28,7 @@ export default function AttendanceScreen({ navigation }: Props) {
     const schedules = await listSchedules();
     const current = schedules[0] ?? null;
     setSchedule(current);
+    setCheckedIn(await hasCheckedInToday());
     if (current) {
       const [attendances, members] = await Promise.all([listEarlyBirds(current.id), listMembers()]);
       setEarlyBirds(

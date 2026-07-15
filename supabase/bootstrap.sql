@@ -56,6 +56,10 @@ create table attendances (
   checked_at timestamptz not null default now()
 );
 
+-- At most one check-in per member per calendar day (KST).
+create unique index attendances_one_per_day
+  on attendances (user_id, ((checked_at at time zone 'Asia/Seoul')::date));
+
 create table dues_ledger (
   id uuid primary key default gen_random_uuid(),
   type ledger_type not null,
@@ -114,7 +118,7 @@ create table chat_rooms (
 create table messages (
   id uuid primary key default gen_random_uuid(),
   room_id uuid not null references chat_rooms(id) on delete cascade,
-  user_id uuid not null references users(id) on delete cascade,
+  user_id uuid references users(id) on delete cascade,
   body text not null,
   created_at timestamptz not null default now()
 );
@@ -167,6 +171,15 @@ create table attendance_month (
   unique (user_id, year_month)
 );
 
+-- Home notices ("공지글"): visible to everyone, written/deleted by akatsuki only.
+create table notices (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  body text not null,
+  created_by uuid not null references users(id),
+  created_at timestamptz not null default now()
+);
+
 create index on rsvps (schedule_id);
 create index on attendances (schedule_id, checked_at);
 create index on messages (room_id, created_at);
@@ -216,6 +229,7 @@ alter table vote_responses enable row level security;
 alter table tier_logs enable row level security;
 alter table real_name_view_logs enable row level security;
 alter table attendance_month enable row level security;
+alter table notices enable row level security;
 
 -- users: base table only selectable by self or akatsuki (real_name/phone live here).
 -- Everyone else reads the member_directory view below, which excludes real_name/phone/pin_hash.
@@ -251,6 +265,13 @@ create policy dues_ledger_select_expense on dues_ledger for select using (type =
 create policy dues_ledger_insert on dues_ledger for insert with check (current_tier_rank() >= 4);
 create policy dues_ledger_update on dues_ledger for update using (current_tier_rank() >= 4);
 
+-- Self-service: any member (rank >= talbuchak) may insert their OWN payment
+-- record, tagged to their own member_id — no OCR name-matching needed since
+-- the uploader IS the payer. The admin-only insert above still covers bulk
+-- processing of everyone else's payments from a shared bank screenshot.
+create policy dues_ledger_insert_self on dues_ledger for insert
+  with check (current_tier_rank() >= 2 and type = 'income' and member_id = auth.uid());
+
 -- dues_settings: read requires rank >= 2 (balance context), write requires rank >= 4
 create policy dues_settings_select on dues_settings for select using (current_tier_rank() >= 2);
 create policy dues_settings_update on dues_settings for update using (current_tier_rank() >= 4);
@@ -258,6 +279,8 @@ create policy dues_settings_update on dues_settings for update using (current_ti
 -- posts/comments/likes: community requires rank >= 3
 create policy posts_select on posts for select using (current_tier_rank() >= 3);
 create policy posts_insert on posts for insert with check (user_id = auth.uid() and current_tier_rank() >= 3);
+create policy posts_update_own_or_admin on posts for update using (user_id = auth.uid() or is_akatsuki());
+create policy posts_delete_own_or_admin on posts for delete using (user_id = auth.uid() or is_akatsuki());
 create policy post_likes_select on post_likes for select using (current_tier_rank() >= 3);
 create policy post_likes_insert on post_likes for insert with check (user_id = auth.uid() and current_tier_rank() >= 3);
 create policy comments_select on comments for select using (current_tier_rank() >= 3);
@@ -283,6 +306,12 @@ create policy real_name_logs_insert on real_name_view_logs for insert with check
 
 -- attendance_month: self or admin
 create policy attendance_month_select on attendance_month for select using (user_id = auth.uid() or current_tier_rank() >= 3);
+
+-- notices: visible to everyone, written/deleted by akatsuki only
+create policy notices_select on notices for select using (true);
+create policy notices_insert on notices for insert with check (is_akatsuki());
+create policy notices_update on notices for update using (is_akatsuki());
+create policy notices_delete on notices for delete using (is_akatsuki());
 -- Monthly promotion/demotion batch (spec section 5): runs at 00:05 on the 1st of each month.
 create extension if not exists pg_cron;
 
@@ -357,18 +386,36 @@ create trigger attendances_after_insert
 create extension if not exists pg_net;
 
 -- Re-schedules itself daily; fires the edge function only when today matches dues_settings.deposit_day.
+-- Also posts a chat message into the general room ("전체방") so the reminder
+-- shows up even if push notifications aren't set up; the push call is
+-- wrapped so its failure never rolls back the chat message.
 create or replace function trigger_deposit_reminder() returns void
 language plpgsql security definer set search_path = public as $$
 declare
   settings dues_settings;
+  general_room_id uuid;
 begin
   select * into settings from dues_settings where id = 1;
   if settings.notify_on and extract(day from now()) = settings.deposit_day then
-    perform net.http_post(
-      url := current_setting('app.settings.edge_function_url') || '/send-push',
-      headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.service_role_key'), 'Content-Type', 'application/json'),
-      body := jsonb_build_object('type', 'deposit_reminder', 'amount', settings.monthly_fee)
-    );
+    select id into general_room_id from chat_rooms where name = '전체방' limit 1;
+    if general_room_id is not null then
+      insert into messages (room_id, user_id, body)
+      values (
+        general_room_id,
+        null,
+        format('오늘은 회비 납부일입니다. 이번 달 회비 %s원을 입금해주세요!', to_char(settings.monthly_fee, 'FM999,999,999'))
+      );
+    end if;
+
+    begin
+      perform net.http_post(
+        url := current_setting('app.settings.edge_function_url') || '/send-push',
+        headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.service_role_key'), 'Content-Type', 'application/json'),
+        body := jsonb_build_object('type', 'deposit_reminder', 'amount', settings.monthly_fee)
+      );
+    exception when others then
+      null;
+    end;
   end if;
 end;
 $$;
@@ -385,6 +432,10 @@ create policy dues_receipts_admin_write on storage.objects for insert
 
 create policy dues_receipts_admin_read on storage.objects for select
   using (bucket_id = 'dues-receipts' and current_tier_rank() >= 4);
+
+-- Self-service: any member (rank >= talbuchak) may upload their own receipt.
+create policy dues_receipts_self_write on storage.objects for insert
+  with check (bucket_id = 'dues-receipts' and current_tier_rank() >= 2);
 
 create policy post_images_read on storage.objects for select
   using (bucket_id = 'post-images');

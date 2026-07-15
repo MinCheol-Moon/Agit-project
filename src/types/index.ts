@@ -113,7 +113,7 @@ export interface ChatRoom {
 export interface ChatMessage {
   id: string;
   roomId: string;
-  userId: string;
+  userId: string | null;
   body: string;
   createdAt: string;
 }
@@ -139,6 +139,14 @@ export interface Vote {
   deadline: string;
   scope: string;
   options: VoteOption[];
+}
+
+export interface Notice {
+  id: string;
+  title: string;
+  body: string;
+  createdBy: string;
+  createdAt: string;
 }
 
 export interface TierLog {

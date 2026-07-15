@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { HomeStackParamList, MainTabParamList } from '../../navigation/types';
@@ -9,7 +9,8 @@ import { useAuth } from '../../context/AuthContext';
 import { TierBadge } from '../../components/TierBadge';
 import { can, PermissionKey } from '../../lib/permissions';
 import { listSchedules } from '../../data/schedules';
-import { Schedule, CREW_LABEL } from '../../types';
+import { deleteNotice, listNotices } from '../../data/notices';
+import { Schedule, Notice, CREW_LABEL } from '../../types';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
@@ -35,12 +36,35 @@ export default function HomeScreen({ navigation }: Props) {
   const nav = useNavigation<Nav>();
   const { user } = useAuth();
   const [upcoming, setUpcoming] = useState<Schedule | null>(null);
-
-  useEffect(() => {
-    listSchedules().then((list) => setUpcoming(list[0] ?? null));
-  }, []);
+  const [notices, setNotices] = useState<Notice[]>([]);
 
   const tier = user?.tier ?? 'guest';
+  const canManageNotices = tier === 'akatsuki';
+
+  useFocusEffect(
+    useCallback(() => {
+      listSchedules().then((list) => setUpcoming(list[0] ?? null));
+      listNotices().then(setNotices);
+    }, []),
+  );
+
+  const handleDeleteNotice = (noticeId: string) => {
+    Alert.alert('공지 삭제', '이 공지를 삭제할까요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteNotice(noticeId);
+            setNotices((prev) => prev.filter((n) => n.id !== noticeId));
+          } catch (e) {
+            Alert.alert('삭제 실패', e instanceof Error ? e.message : String(e));
+          }
+        },
+      },
+    ]);
+  };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -69,6 +93,32 @@ export default function HomeScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.banner} onPress={() => navigation.navigate('PendingApproval')}>
           <Text style={styles.bannerText}>가입 승인 대기 중입니다. 눌러서 확인하세요.</Text>
         </TouchableOpacity>
+      )}
+
+      {(notices.length > 0 || canManageNotices) && (
+        <View style={styles.noticeSection}>
+          <View style={styles.noticeSectionHeader}>
+            <Text style={styles.sectionTitle}>공지사항</Text>
+            {canManageNotices && (
+              <TouchableOpacity onPress={() => navigation.navigate('NewNotice')}>
+                <Ionicons name="add-circle-outline" size={20} color={colors.gold} />
+              </TouchableOpacity>
+            )}
+          </View>
+          {notices.map((notice) => (
+            <View key={notice.id} style={styles.noticeCard}>
+              <View style={styles.noticeCardTop}>
+                <Text style={styles.noticeTitle} numberOfLines={1}>{notice.title}</Text>
+                {canManageNotices && (
+                  <TouchableOpacity onPress={() => handleDeleteNotice(notice.id)}>
+                    <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              <Text style={styles.noticeBody} numberOfLines={2}>{notice.body}</Text>
+            </View>
+          ))}
+        </View>
       )}
 
       {upcoming && (
@@ -129,6 +179,20 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   bannerText: { color: colors.creamText, fontWeight: '600', fontSize: 13 },
+  noticeSection: { marginBottom: spacing.lg },
+  noticeSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+  noticeCard: {
+    backgroundColor: colors.white,
+    borderRadius: radius.tile,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  noticeCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: spacing.sm },
+  noticeTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.text },
+  noticeBody: { fontSize: 12, color: colors.textMuted, lineHeight: 17 },
   upcomingCard: {
     backgroundColor: colors.white,
     borderRadius: radius.card,

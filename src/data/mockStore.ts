@@ -6,6 +6,7 @@ import {
   DirectMessage,
   DuesLedgerEntry,
   DuesSettings,
+  Notice,
   Post,
   Rsvp,
   Schedule,
@@ -217,6 +218,16 @@ export const mockVotes: Vote[] = [
       { id: 'vo-1', voteId: 'v-1', label: '서울', count: 9 },
       { id: 'vo-2', voteId: 'v-1', label: '경기', count: 4 },
     ],
+  },
+];
+
+export const mockNotices: Notice[] = [
+  {
+    id: 'n-1',
+    title: '7월 정기모임 안내',
+    body: '이번 달 정기모임은 셋째 주 토요일입니다. 많은 참여 부탁드려요.',
+    createdBy: CURRENT_USER_ID,
+    createdAt: iso(-2),
   },
 ];
 

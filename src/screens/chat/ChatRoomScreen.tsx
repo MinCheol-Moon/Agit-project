@@ -85,6 +85,13 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
         contentContainerStyle={styles.list}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         renderItem={({ item }) => {
+          if (item.userId === null) {
+            return (
+              <View style={styles.systemRow}>
+                <Text style={styles.systemText}>{item.body}</Text>
+              </View>
+            );
+          }
           const mine = item.userId === user?.id;
           return (
             <View style={[styles.bubbleRow, mine && styles.bubbleRowMine]}>
@@ -116,6 +123,8 @@ const styles = StyleSheet.create({
   bubbleRow: { alignItems: 'flex-start', marginBottom: spacing.xs },
   bubbleRowMine: { alignItems: 'flex-end' },
   nickname: { fontSize: 11, color: colors.textMuted, marginBottom: 2, marginLeft: 4 },
+  systemRow: { alignItems: 'center', marginBottom: spacing.xs },
+  systemText: { fontSize: 12, color: colors.creamText, backgroundColor: colors.cream, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6, overflow: 'hidden' },
   bubble: { maxWidth: '75%', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.tile },
   bubbleMine: { backgroundColor: colors.goldLight },
   bubbleOther: { backgroundColor: colors.white },

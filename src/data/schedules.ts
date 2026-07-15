@@ -92,9 +92,16 @@ export async function checkIn(scheduleId: string): Promise<Attendance> {
       .insert({ user_id: await getAuthUserId(), schedule_id: scheduleId })
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') throw new Error('오늘은 이미 출석 체크를 하셨어요.');
+      throw error;
+    }
     return camelizeDeep<Attendance>(data);
   }
+  const alreadyToday = mockAttendances.some(
+    (a) => a.userId === CURRENT_USER_ID && a.checkedAt.slice(0, 10) === new Date().toISOString().slice(0, 10),
+  );
+  if (alreadyToday) throw new Error('오늘은 이미 출석 체크를 하셨어요.');
   const attendance: Attendance = {
     id: `a-${Date.now()}`,
     userId: CURRENT_USER_ID,
@@ -103,6 +110,24 @@ export async function checkIn(scheduleId: string): Promise<Attendance> {
   };
   mockAttendances.push(attendance);
   return attendance;
+}
+
+export async function hasCheckedInToday(): Promise<boolean> {
+  if (isSupabaseConfigured && supabase) {
+    const userId = await getAuthUserId();
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const { data, error } = await supabase
+      .from('attendances')
+      .select('id')
+      .eq('user_id', userId)
+      .gte('checked_at', startOfDay.toISOString())
+      .limit(1);
+    if (error) throw error;
+    return (data ?? []).length > 0;
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  return mockAttendances.some((a) => a.userId === CURRENT_USER_ID && a.checkedAt.slice(0, 10) === today);
 }
 
 export async function listAttendeeIds(scheduleId: string): Promise<string[]> {

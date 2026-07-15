@@ -1,12 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { HomeStackParamList } from '../../navigation/types';
 import { approveMember, getRealName, listMembers, listPendingMembers, rejectMember, setMemberTier } from '../../data/users';
-import { AppUser, CREW_LABEL, TIER_RANK, Tier } from '../../types';
+import { AppUser, CREW_LABEL, TIER_LABEL, Tier } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { can } from '../../lib/permissions';
 import { TierBadge } from '../../components/TierBadge';
@@ -24,6 +24,7 @@ export default function MembersScreen({ navigation }: Props) {
   const [pending, setPending] = useState<AppUser[]>([]);
   const [showRealName, setShowRealName] = useState(false);
   const [realNames, setRealNames] = useState<Record<string, string>>({});
+  const [pickerMember, setPickerMember] = useState<AppUser | null>(null);
 
   const load = useCallback(async () => {
     const activeMembers = await listMembers();
@@ -70,23 +71,19 @@ export default function MembersScreen({ navigation }: Props) {
     }
   };
 
-  const cycleTier = async (member: AppUser) => {
-    const idx = TIER_ORDER.indexOf(member.tier);
-    const next = TIER_ORDER[Math.min(idx + 1, TIER_ORDER.length - 1)];
-    Alert.alert('등급 변경', `${member.nickname}님을 ${next}로 변경할까요?`, [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '변경',
-        onPress: async () => {
-          try {
-            await setMemberTier(member.id, next);
-            load();
-          } catch (e) {
-            Alert.alert('등급 변경 실패', e instanceof Error ? e.message : String(e));
-          }
-        },
-      },
-    ]);
+  const handleSelectTier = async (nextTier: Tier) => {
+    if (!pickerMember) return;
+    if (nextTier === 'akatsuki' && !user?.isMaster) {
+      Alert.alert('권한 없음', '관리자(아카츠키) 임명은 마스터만 할 수 있습니다.');
+      return;
+    }
+    try {
+      await setMemberTier(pickerMember.id, nextTier);
+      setPickerMember(null);
+      load();
+    } catch (e) {
+      Alert.alert('등급 변경 실패', e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (
@@ -132,7 +129,7 @@ export default function MembersScreen({ navigation }: Props) {
               key={m.id}
               style={styles.memberRow}
               disabled={!isAdmin}
-              onPress={() => cycleTier(m)}
+              onPress={() => setPickerMember(m)}
             >
               <View style={{ flex: 1 }}>
                 <View style={styles.memberNameRow}>
@@ -148,6 +145,28 @@ export default function MembersScreen({ navigation }: Props) {
           ))}
         </View>
       </ScrollView>
+
+      <Modal visible={!!pickerMember} transparent animationType="fade" onRequestClose={() => setPickerMember(null)}>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setPickerMember(null)}>
+          <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+            <Text style={styles.modalTitle}>{pickerMember?.nickname}님의 등급</Text>
+            {TIER_ORDER.map((t) => (
+              <TouchableOpacity
+                key={t}
+                style={styles.modalRow}
+                onPress={() => handleSelectTier(t)}
+              >
+                <TierBadge tier={t} size="sm" />
+                <Text style={styles.modalRowLabel}>{TIER_LABEL[t]}</Text>
+                {pickerMember?.tier === t && <Ionicons name="checkmark" size={18} color={colors.gold} />}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.modalCancel} onPress={() => setPickerMember(null)}>
+              <Text style={styles.modalCancelText}>취소</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -168,4 +187,11 @@ const styles = StyleSheet.create({
   memberNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   memberName: { fontSize: 14, fontWeight: '700', color: colors.text },
   memberMeta: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: spacing.xl },
+  modalCard: { backgroundColor: colors.white, borderRadius: radius.card, padding: spacing.lg },
+  modalTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
+  modalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.line },
+  modalRowLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text },
+  modalCancel: { alignItems: 'center', paddingVertical: spacing.md, marginTop: spacing.sm },
+  modalCancelText: { color: colors.textMuted, fontWeight: '600' },
 });

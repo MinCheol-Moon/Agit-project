@@ -64,6 +64,29 @@ export async function createPost(input: { title: string; body: string; crew?: Cr
   });
 }
 
+export async function updatePost(postId: string, input: { title: string; body: string }): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('posts').update({ title: input.title, body: input.body }).eq('id', postId);
+    if (error) throw error;
+    return;
+  }
+  const post = mockPosts.find((p) => p.id === postId);
+  if (post) {
+    post.title = input.title;
+    post.body = input.body;
+  }
+}
+
+export async function deletePost(postId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('posts').delete().eq('id', postId);
+    if (error) throw error;
+    return;
+  }
+  const idx = mockPosts.findIndex((p) => p.id === postId);
+  if (idx >= 0) mockPosts.splice(idx, 1);
+}
+
 export async function likePost(postId: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     const { error } = await supabase.from('post_likes').insert({ post_id: postId, user_id: await getAuthUserId() });
