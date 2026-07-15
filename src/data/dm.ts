@@ -48,8 +48,9 @@ export async function sendDirectMessage(recipientId: string, body: string): Prom
 
 export async function deleteDirectMessage(messageId: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.from('direct_messages').delete().eq('id', messageId);
+    const { data, error } = await supabase.from('direct_messages').delete().eq('id', messageId).select('id');
     if (error) throw error;
+    if (!data || data.length === 0) throw new Error('삭제 권한이 없거나 서버 설정(마이그레이션)이 아직 반영되지 않았어요.');
     return;
   }
   const idx = mockDirectMessages.findIndex((m) => m.id === messageId);

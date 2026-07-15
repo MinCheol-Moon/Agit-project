@@ -66,8 +66,15 @@ export async function createPost(input: { title: string; body: string; crew?: Cr
 
 export async function updatePost(postId: string, input: { title: string; body: string }): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.from('posts').update({ title: input.title, body: input.body }).eq('id', postId);
+    // ponytail: RLS blocks show up as a silent 0-row write, not an error.
+    // .select() + a length check turns that into a real failure the UI can show.
+    const { data, error } = await supabase
+      .from('posts')
+      .update({ title: input.title, body: input.body })
+      .eq('id', postId)
+      .select('id');
     if (error) throw error;
+    if (!data || data.length === 0) throw new Error('수정 권한이 없거나 서버 설정(마이그레이션)이 아직 반영되지 않았어요.');
     return;
   }
   const post = mockPosts.find((p) => p.id === postId);
@@ -79,8 +86,9 @@ export async function updatePost(postId: string, input: { title: string; body: s
 
 export async function deletePost(postId: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.from('posts').delete().eq('id', postId);
+    const { data, error } = await supabase.from('posts').delete().eq('id', postId).select('id');
     if (error) throw error;
+    if (!data || data.length === 0) throw new Error('삭제 권한이 없거나 서버 설정(마이그레이션)이 아직 반영되지 않았어요.');
     return;
   }
   const idx = mockPosts.findIndex((p) => p.id === postId);

@@ -1,9 +1,11 @@
 import React from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
-import { MyStackParamList } from '../../navigation/types';
+import { MainTabParamList, MyStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import { useAppLock } from '../../context/AppLockContext';
 import { TierBadge } from '../../components/TierBadge';
@@ -11,8 +13,10 @@ import { CREW_LABEL } from '../../types';
 import { activateMultiDeviceLogin, logOut } from '../../data/users';
 
 type Props = NativeStackScreenProps<MyStackParamList, 'MyPage'>;
+type Nav = CompositeNavigationProp<Props['navigation'], BottomTabNavigationProp<MainTabParamList>>;
 
 export default function MyPageScreen({ navigation }: Props) {
+  const nav = useNavigation<Nav>();
   const { user, refresh } = useAuth();
   const { lock } = useAppLock();
 
@@ -84,6 +88,11 @@ export default function MyPageScreen({ navigation }: Props) {
         <Text style={styles.ruleText}>· 3개월 연속 미참석 → 탈퇴 처리</Text>
       </View>
 
+      {user.isMaster && (
+        <TouchableOpacity style={styles.linkRow} onPress={() => nav.navigate('HomeTab', { screen: 'Members' })}>
+          <Text style={styles.linkText}>회원 관리 (등급 조정 · 관리자 임명)</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('Rules')}>
         <Text style={styles.linkText}>회칙 보기</Text>
       </TouchableOpacity>

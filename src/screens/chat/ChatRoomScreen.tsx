@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { ChatStackParamList } from '../../navigation/types';
 import { deleteMessage, listMessages, sendMessage, subscribeToRoom } from '../../data/chat';
@@ -96,13 +97,23 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
           return (
             <View style={[styles.bubbleRow, mine && styles.bubbleRowMine]}>
               {!mine && <Text style={styles.nickname}>{nicknames[item.userId] ?? '회원'}</Text>}
-              <TouchableOpacity
-                activeOpacity={mine ? 0.6 : 1}
-                onLongPress={mine ? () => handleDelete(item.id) : undefined}
-                style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
-              >
-                <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.body}</Text>
-              </TouchableOpacity>
+              <View style={[styles.bubbleWithAction, mine && styles.bubbleWithActionMine]}>
+                {/* ponytail: long-press has no visible affordance and doesn't fire
+                    reliably on web mouse input, so own messages also get a plain
+                    visible delete button instead of relying on it alone. */}
+                {mine && (
+                  <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteIcon} hitSlop={8}>
+                    <Ionicons name="trash-outline" size={14} color={colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  activeOpacity={mine ? 0.6 : 1}
+                  onLongPress={mine ? () => handleDelete(item.id) : undefined}
+                  style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
+                >
+                  <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.body}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           );
         }}
@@ -123,6 +134,9 @@ const styles = StyleSheet.create({
   bubbleRow: { alignItems: 'flex-start', marginBottom: spacing.xs },
   bubbleRowMine: { alignItems: 'flex-end' },
   nickname: { fontSize: 11, color: colors.textMuted, marginBottom: 2, marginLeft: 4 },
+  bubbleWithAction: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  bubbleWithActionMine: { flexDirection: 'row-reverse' },
+  deleteIcon: { padding: 4 },
   systemRow: { alignItems: 'center', marginBottom: spacing.xs },
   systemText: { fontSize: 12, color: colors.creamText, backgroundColor: colors.cream, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6, overflow: 'hidden' },
   bubble: { maxWidth: '75%', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.tile },

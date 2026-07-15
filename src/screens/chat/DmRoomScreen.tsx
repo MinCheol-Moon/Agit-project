@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { ChatStackParamList } from '../../navigation/types';
 import { deleteDirectMessage, listDirectMessages, sendDirectMessage, subscribeToDirectMessages } from '../../data/dm';
@@ -86,13 +87,20 @@ export default function DmRoomScreen({ route, navigation }: Props) {
           const mine = item.senderId === user?.id;
           return (
             <View style={[styles.bubbleRow, mine && styles.bubbleRowMine]}>
-              <TouchableOpacity
-                activeOpacity={mine ? 0.6 : 1}
-                onLongPress={mine ? () => handleDelete(item.id) : undefined}
-                style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
-              >
-                <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.body}</Text>
-              </TouchableOpacity>
+              <View style={[styles.bubbleWithAction, mine && styles.bubbleWithActionMine]}>
+                {mine && (
+                  <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteIcon} hitSlop={8}>
+                    <Ionicons name="trash-outline" size={14} color={colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  activeOpacity={mine ? 0.6 : 1}
+                  onLongPress={mine ? () => handleDelete(item.id) : undefined}
+                  style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
+                >
+                  <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.body}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           );
         }}
@@ -112,6 +120,9 @@ const styles = StyleSheet.create({
   list: { padding: spacing.lg, gap: spacing.sm },
   bubbleRow: { alignItems: 'flex-start', marginBottom: spacing.xs },
   bubbleRowMine: { alignItems: 'flex-end' },
+  bubbleWithAction: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  bubbleWithActionMine: { flexDirection: 'row-reverse' },
+  deleteIcon: { padding: 4 },
   bubble: { maxWidth: '75%', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.tile },
   bubbleMine: { backgroundColor: colors.goldLight },
   bubbleOther: { backgroundColor: colors.white },
