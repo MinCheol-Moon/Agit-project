@@ -4,7 +4,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radius, spacing } from '../../theme/colors';
 import { ScheduleStackParamList } from '../../navigation/types';
-import { getMyRsvp, listSchedules, setRsvp } from '../../data/schedules';
+import { getMyRsvp, listAttendeeIds, listSchedules, setRsvp } from '../../data/schedules';
+import { listMembers } from '../../data/users';
 import { CREW_LABEL, Rsvp, Schedule } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { can } from '../../lib/permissions';
@@ -17,13 +18,24 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
   const { user } = useAuth();
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [myRsvp, setMyRsvp] = useState<Rsvp | undefined>();
+  const [attendees, setAttendees] = useState<string[]>([]);
   const tier = user?.tier ?? 'guest';
+  const canSeeAttendees = can(tier, 'attendance');
+
+  const loadAttendees = useCallback(async () => {
+    if (!canSeeAttendees) return;
+    const [ids, members] = await Promise.all([listAttendeeIds(scheduleId), listMembers()]);
+    const nicknameById = new Map(members.map((m) => [m.id, m.nickname]));
+    setAttendees(ids.map((id) => nicknameById.get(id) ?? '회원'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheduleId, canSeeAttendees]);
 
   useFocusEffect(
     useCallback(() => {
       listSchedules().then((list) => setSchedule(list.find((s) => s.id === scheduleId) ?? null));
       getMyRsvp(scheduleId).then(setMyRsvp);
-    }, [scheduleId]),
+      loadAttendees();
+    }, [scheduleId, loadAttendees]),
   );
 
   const handleRsvp = async (status: 'yes' | 'no') => {
@@ -36,6 +48,7 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
       const updated = await getMyRsvp(scheduleId);
       setMyRsvp(updated);
       listSchedules().then((list) => setSchedule(list.find((s) => s.id === scheduleId) ?? null));
+      loadAttendees();
     } catch (e) {
       Alert.alert('참석 등록 실패', e instanceof Error ? e.message : String(e));
     }
@@ -72,6 +85,25 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
           </TouchableOpacity>
         </View>
         {!can(tier, 'scheduleRsvp') && <Text style={styles.lockNote}>랄잡부터 참석 여부를 표시할 수 있어요</Text>}
+
+        {canSeeAttendees ? (
+          <View style={styles.attendeeSection}>
+            <Text style={styles.attendeeTitle}>참석자 명단</Text>
+            {attendees.length === 0 ? (
+              <Text style={styles.attendeeEmpty}>아직 참석자가 없어요</Text>
+            ) : (
+              <View style={styles.attendeeList}>
+                {attendees.map((nickname, i) => (
+                  <View key={`${nickname}-${i}`} style={styles.attendeeChip}>
+                    <Text style={styles.attendeeChipText}>{nickname}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        ) : (
+          <Text style={styles.lockNote}>랄잡부터 참석자 명단을 볼 수 있어요</Text>
+        )}
       </ScrollView>
     </View>
   );
@@ -99,4 +131,10 @@ const styles = StyleSheet.create({
   rsvpText: { fontWeight: '700', color: colors.text },
   rsvpTextActive: { color: colors.white },
   lockNote: { marginTop: spacing.md, fontSize: 12, color: colors.textMuted, textAlign: 'center' },
+  attendeeSection: { marginTop: spacing.xl },
+  attendeeTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
+  attendeeEmpty: { fontSize: 13, color: colors.textMuted },
+  attendeeList: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  attendeeChip: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 8 },
+  attendeeChipText: { fontSize: 13, color: colors.text, fontWeight: '600' },
 });

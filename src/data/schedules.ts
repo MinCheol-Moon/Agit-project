@@ -105,6 +105,38 @@ export async function checkIn(scheduleId: string): Promise<Attendance> {
   return attendance;
 }
 
+export async function listAttendeeIds(scheduleId: string): Promise<string[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('rsvps').select('user_id').eq('schedule_id', scheduleId).eq('status', 'yes');
+    if (error) throw error;
+    return (data ?? []).map((r) => r.user_id as string);
+  }
+  return mockRsvps.filter((r) => r.scheduleId === scheduleId && r.status === 'yes').map((r) => r.userId);
+}
+
+export async function listAttendeeIdsByScheduleId(): Promise<Map<string, string[]>> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('rsvps').select('schedule_id, user_id').eq('status', 'yes');
+    if (error) throw error;
+    const map = new Map<string, string[]>();
+    (data ?? []).forEach((r) => {
+      const list = map.get(r.schedule_id) ?? [];
+      list.push(r.user_id);
+      map.set(r.schedule_id, list);
+    });
+    return map;
+  }
+  const map = new Map<string, string[]>();
+  mockRsvps
+    .filter((r) => r.status === 'yes')
+    .forEach((r) => {
+      const list = map.get(r.scheduleId) ?? [];
+      list.push(r.userId);
+      map.set(r.scheduleId, list);
+    });
+  return map;
+}
+
 export async function listEarlyBirds(scheduleId: string): Promise<Attendance[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
