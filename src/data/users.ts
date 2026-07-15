@@ -1,14 +1,13 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
-import { ensureSession } from '../lib/session';
+import { activateLoginForCurrentAccount, signInWithIdentifier, signOut, signUpAccount } from '../lib/session';
 import { camelizeDeep } from '../lib/caseMap';
 import { AppUser } from '../types';
 import { CURRENT_USER_ID, mockUsers } from './mockStore';
 
-// Returns null when this device has an auth session but no `users` row yet,
-// i.e. it has never submitted the signup form (see screens/auth/SignupScreen).
+// Returns null when nobody is logged in on this device (never signed up, or
+// signed out) — see screens/auth/{SignupScreen,LoginScreen}.
 export async function getCurrentUser(): Promise<AppUser | null> {
   if (isSupabaseConfigured && supabase) {
-    await ensureSession();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return null;
     const { data, error } = await supabase
@@ -20,6 +19,25 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     return data ? camelizeDeep<AppUser>(data) : null;
   }
   return mockUsers.find((u) => u.id === CURRENT_USER_ID) ?? null;
+}
+
+export async function logIn(identifier: string, code: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    await signInWithIdentifier(identifier, code);
+    return;
+  }
+  // Mock mode has a single always-logged-in user; nothing to do.
+}
+
+export async function logOut(): Promise<void> {
+  await signOut();
+}
+
+// One-time retrofit for accounts created before phone-code login existed.
+export async function activateMultiDeviceLogin(phone: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    await activateLoginForCurrentAccount(phone);
+  }
 }
 
 export async function listMembers(): Promise<AppUser[]> {
@@ -92,10 +110,9 @@ export async function signUp(input: {
   intro?: string;
 }): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    await ensureSession();
-    const { data: auth } = await supabase.auth.getUser();
+    const userId = await signUpAccount(input.phone);
     const { error } = await supabase.from('users').insert({
-      id: auth.user?.id,
+      id: userId,
       real_name: input.realName,
       nickname: input.nickname,
       phone: input.phone,

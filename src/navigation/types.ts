@@ -14,6 +14,7 @@ export type HomeStackParamList = {
   Rules: undefined;
   Store: undefined;
   Signup: undefined;
+  Login: undefined;
   PendingApproval: undefined;
 };
 

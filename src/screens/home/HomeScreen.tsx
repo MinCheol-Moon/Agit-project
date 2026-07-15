@@ -68,9 +68,17 @@ export default function HomeScreen({ navigation }: Props) {
         </TouchableOpacity>
       )}
       {!user && (
-        <TouchableOpacity style={styles.banner} onPress={() => navigation.navigate('Signup')}>
-          <Text style={styles.bannerText}>아지트 가입하고 모든 기능을 이용해보세요 →</Text>
-        </TouchableOpacity>
+        <View style={styles.banner}>
+          <Text style={styles.bannerText}>아지트 가입하고 모든 기능을 이용해보세요</Text>
+          <View style={styles.bannerRow}>
+            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+              <Text style={styles.bannerLink}>가입 신청 →</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.bannerLink}>이미 회원이신가요? 로그인 →</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
 
       {upcoming && (
@@ -130,7 +138,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
-  bannerText: { color: colors.creamText, fontWeight: '600', fontSize: 13 },
+  bannerText: { color: colors.creamText, fontWeight: '600', fontSize: 13, marginBottom: spacing.sm },
+  bannerRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  bannerLink: { color: colors.creamText, fontWeight: '700', fontSize: 12, textDecorationLine: 'underline' },
   upcomingCard: {
     backgroundColor: colors.white,
     borderRadius: radius.card,

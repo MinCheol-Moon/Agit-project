@@ -43,6 +43,7 @@ export default function SignupScreen({ navigation }: Props) {
 
         <Text style={styles.label}>연락처</Text>
         <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="010-0000-0000" keyboardType="phone-pad" />
+        <Text style={styles.hint}>다른 기기에서 로그인할 때 이 번호의 뒷 4자리를 사용해요</Text>
 
         <Text style={styles.label}>추천인 (선택)</Text>
         <TextInput style={styles.input} value={referrer} onChangeText={setReferrer} placeholder="추천인 닉네임" />
@@ -66,6 +67,7 @@ const styles = StyleSheet.create({
   notice: { fontSize: 12, color: colors.creamText, backgroundColor: colors.cream, borderColor: colors.creamBorder, borderWidth: 1, borderRadius: radius.tile, padding: spacing.md, marginBottom: spacing.lg },
   label: { fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: spacing.sm, marginTop: spacing.md },
   input: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radius.tile, paddingHorizontal: spacing.md, paddingVertical: 12, fontSize: 14 },
+  hint: { fontSize: 11, color: colors.textMuted, marginTop: 6 },
   multiline: { minHeight: 80, textAlignVertical: 'top' },
   submitButton: { backgroundColor: colors.gold, borderRadius: radius.card, alignItems: 'center', paddingVertical: 16, marginTop: spacing.xxl },
   submitText: { color: colors.white, fontWeight: '700', fontSize: 15 },
