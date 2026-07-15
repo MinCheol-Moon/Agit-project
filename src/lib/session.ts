@@ -28,7 +28,7 @@ export async function signUpAccount(phone: string): Promise<string> {
 
 export async function signInWithIdentifier(identifier: string, code: string): Promise<void> {
   if (!isSupabaseConfigured || !supabase) throw new Error('Supabase is not configured');
-  const { data: email, error } = await supabase.rpc('resolve_login_email', { identifier });
+  const { data: email, error } = await supabase.rpc('resolve_login_email', { identifier: identifier.trim() });
   if (error) throw error;
   if (!email) throw new Error('일치하는 계정을 찾을 수 없습니다.');
   const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: code });

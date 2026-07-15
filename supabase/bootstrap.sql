@@ -446,7 +446,7 @@ language sql security definer set search_path = public, auth as $$
   select au.email
   from users u
   join auth.users au on au.id = u.id
-  where u.nickname = identifier or u.real_name = identifier
+  where trim(u.nickname) = trim(identifier) or trim(u.real_name) = trim(identifier)
   limit 1
 $$;
 

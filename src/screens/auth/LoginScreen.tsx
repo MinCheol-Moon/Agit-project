@@ -12,9 +12,16 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 export default function LoginScreen({ navigation }: Props) {
   const { refresh } = useAuth();
   const [identifier, setIdentifier] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const confirmIdentifier = () => {
+    if (!identifier.trim()) return;
+    setIdentifier(identifier.trim());
+    setConfirmed(true);
+  };
 
   const handleDigit = async (digit: string) => {
     if (code.length >= 4 || submitting) return;
@@ -36,7 +43,7 @@ export default function LoginScreen({ navigation }: Props) {
     }
   };
 
-  const step2 = identifier.trim().length > 0;
+  const step2 = confirmed;
 
   return (
     <View style={styles.screen}>
@@ -50,12 +57,12 @@ export default function LoginScreen({ navigation }: Props) {
             onChangeText={setIdentifier}
             placeholder="닉네임 또는 실명"
             autoFocus
-            onSubmitEditing={() => identifier.trim() && setIdentifier(identifier.trim())}
+            onSubmitEditing={confirmIdentifier}
           />
           <TouchableOpacity
             style={styles.nextButton}
             disabled={!identifier.trim()}
-            onPress={() => setIdentifier(identifier.trim())}
+            onPress={confirmIdentifier}
           >
             <Text style={styles.nextButtonText}>다음</Text>
           </TouchableOpacity>
@@ -77,6 +84,7 @@ export default function LoginScreen({ navigation }: Props) {
           <TouchableOpacity
             onPress={() => {
               setIdentifier('');
+              setConfirmed(false);
               setCode('');
               setError('');
             }}
