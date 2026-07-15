@@ -69,7 +69,21 @@ export async function sendMessage(roomId: string, body: string): Promise<ChatMes
   return message;
 }
 
-export function subscribeToRoom(roomId: string, onMessage: (message: ChatMessage) => void) {
+export async function deleteMessage(messageId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('messages').delete().eq('id', messageId);
+    if (error) throw error;
+    return;
+  }
+  const idx = mockMessages.findIndex((m) => m.id === messageId);
+  if (idx >= 0) mockMessages.splice(idx, 1);
+}
+
+export function subscribeToRoom(
+  roomId: string,
+  onInsert: (message: ChatMessage) => void,
+  onDelete?: (messageId: string) => void,
+) {
   const client = supabase;
   if (isSupabaseConfigured && client) {
     const channel = client
@@ -77,7 +91,12 @@ export function subscribeToRoom(roomId: string, onMessage: (message: ChatMessage
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` },
-        (payload) => onMessage(camelizeDeep<ChatMessage>(payload.new)),
+        (payload) => onInsert(camelizeDeep<ChatMessage>(payload.new)),
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` },
+        (payload) => onDelete?.(payload.old.id as string),
       )
       .subscribe();
     return () => {

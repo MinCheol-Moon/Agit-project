@@ -46,19 +46,36 @@ export async function sendDirectMessage(recipientId: string, body: string): Prom
   return message;
 }
 
-// Every DM insert this user is party to matches RLS regardless of sender/recipient,
+export async function deleteDirectMessage(messageId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('direct_messages').delete().eq('id', messageId);
+    if (error) throw error;
+    return;
+  }
+  const idx = mockDirectMessages.findIndex((m) => m.id === messageId);
+  if (idx >= 0) mockDirectMessages.splice(idx, 1);
+}
+
+// Every DM insert/delete this user is party to matches RLS regardless of sender/recipient,
 // so an unfiltered subscription plus a client-side check covers both directions.
-export function subscribeToDirectMessages(otherUserId: string, myUserId: string, onMessage: (message: DirectMessage) => void) {
+export function subscribeToDirectMessages(
+  otherUserId: string,
+  myUserId: string,
+  onInsert: (message: DirectMessage) => void,
+  onDelete?: (messageId: string) => void,
+) {
   const client = supabase;
   if (isSupabaseConfigured && client) {
+    const isThisConversation = (m: DirectMessage) =>
+      (m.senderId === myUserId && m.recipientId === otherUserId) || (m.senderId === otherUserId && m.recipientId === myUserId);
     const channel = client
       .channel(`dm-${[myUserId, otherUserId].sort().join('-')}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, (payload) => {
         const message = camelizeDeep<DirectMessage>(payload.new);
-        const isThisConversation =
-          (message.senderId === myUserId && message.recipientId === otherUserId) ||
-          (message.senderId === otherUserId && message.recipientId === myUserId);
-        if (isThisConversation) onMessage(message);
+        if (isThisConversation(message)) onInsert(message);
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'direct_messages' }, (payload) => {
+        onDelete?.(payload.old.id as string);
       })
       .subscribe();
     return () => {

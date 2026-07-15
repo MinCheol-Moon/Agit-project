@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radius, spacing } from '../../theme/colors';
 import { ChatStackParamList } from '../../navigation/types';
-import { listDirectMessages, sendDirectMessage, subscribeToDirectMessages } from '../../data/dm';
+import { deleteDirectMessage, listDirectMessages, sendDirectMessage, subscribeToDirectMessages } from '../../data/dm';
 import { DirectMessage } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { ScreenHeader } from '../../components/ScreenHeader';
@@ -30,9 +30,16 @@ export default function DmRoomScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     if (!user) return;
-    const unsubscribe = subscribeToDirectMessages(otherUserId, user.id, (message) => {
-      setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
-    });
+    const unsubscribe = subscribeToDirectMessages(
+      otherUserId,
+      user.id,
+      (message) => {
+        setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+      },
+      (messageId) => {
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      },
+    );
     return unsubscribe;
   }, [otherUserId, user]);
 
@@ -48,6 +55,24 @@ export default function DmRoomScreen({ route, navigation }: Props) {
     }
   };
 
+  const handleDelete = (messageId: string) => {
+    Alert.alert('메시지 삭제', '이 메시지를 삭제할까요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteDirectMessage(messageId);
+            setMessages((prev) => prev.filter((m) => m.id !== messageId));
+          } catch (e) {
+            Alert.alert('삭제 실패', e instanceof Error ? e.message : String(e));
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScreenHeader title={otherNickname} onBack={() => navigation.goBack()} />
@@ -61,9 +86,13 @@ export default function DmRoomScreen({ route, navigation }: Props) {
           const mine = item.senderId === user?.id;
           return (
             <View style={[styles.bubbleRow, mine && styles.bubbleRowMine]}>
-              <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
+              <TouchableOpacity
+                activeOpacity={mine ? 0.6 : 1}
+                onLongPress={mine ? () => handleDelete(item.id) : undefined}
+                style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
+              >
                 <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.body}</Text>
-              </View>
+              </TouchableOpacity>
             </View>
           );
         }}

@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radius, spacing } from '../../theme/colors';
 import { ChatStackParamList } from '../../navigation/types';
-import { listMessages, sendMessage, subscribeToRoom } from '../../data/chat';
+import { deleteMessage, listMessages, sendMessage, subscribeToRoom } from '../../data/chat';
 import { ChatMessage } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { listMembers } from '../../data/users';
@@ -33,9 +33,15 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
   );
 
   useEffect(() => {
-    const unsubscribe = subscribeToRoom(roomId, (message) => {
-      setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
-    });
+    const unsubscribe = subscribeToRoom(
+      roomId,
+      (message) => {
+        setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+      },
+      (messageId) => {
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      },
+    );
     return unsubscribe;
   }, [roomId]);
 
@@ -49,6 +55,24 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
     } catch (e) {
       Alert.alert('전송 실패', e instanceof Error ? e.message : String(e));
     }
+  };
+
+  const handleDelete = (messageId: string) => {
+    Alert.alert('메시지 삭제', '이 메시지를 삭제할까요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteMessage(messageId);
+            setMessages((prev) => prev.filter((m) => m.id !== messageId));
+          } catch (e) {
+            Alert.alert('삭제 실패', e instanceof Error ? e.message : String(e));
+          }
+        },
+      },
+    ]);
   };
 
   return (
@@ -65,9 +89,13 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
           return (
             <View style={[styles.bubbleRow, mine && styles.bubbleRowMine]}>
               {!mine && <Text style={styles.nickname}>{nicknames[item.userId] ?? '회원'}</Text>}
-              <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
+              <TouchableOpacity
+                activeOpacity={mine ? 0.6 : 1}
+                onLongPress={mine ? () => handleDelete(item.id) : undefined}
+                style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
+              >
                 <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.body}</Text>
-              </View>
+              </TouchableOpacity>
             </View>
           );
         }}
