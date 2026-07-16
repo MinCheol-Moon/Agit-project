@@ -13,7 +13,8 @@ const TIER_ROWS: { tier: keyof typeof TIER_LABEL; desc: string }[] = [
   { tier: 'raljab', desc: '+ 출석, 일정 참석 여부 표시' },
   { tier: 'talbuchak', desc: '+ 회비 잔액, 채팅, 일정 참여' },
   { tier: 'taljuninja', desc: '모든 기능·열람 + 일정 생성' },
-  { tier: 'akatsuki', desc: '+ 등급 조정, 가입 승인, 실명 열람, 회비 관리' },
+  { tier: 'akatsuki', desc: '자동 승급 최고 등급 (출석으로 도달 가능)' },
+  { tier: 'admin', desc: '마스터가 임명 · 등급 조정, 가입 승인, 실명 열람, 회비 관리, 공지 작성' },
 ];
 
 export default function RulesScreen({ navigation }: Props) {
@@ -38,7 +39,7 @@ export default function RulesScreen({ navigation }: Props) {
 
         <Text style={styles.sectionTitle}>기본 약속</Text>
         <View style={styles.card}>
-          <Text style={styles.ruleText}>· 실명·연락처는 아카츠키만 열람하며 열람 기록이 남습니다</Text>
+          <Text style={styles.ruleText}>· 실명·연락처는 관리자·마스터만 열람하며 열람 기록이 남습니다</Text>
           <Text style={styles.ruleText}>· 회비는 카카오뱅크로만 관리되며 사용처는 전 등급에 공개됩니다</Text>
           <Text style={styles.ruleText}>· 서로 존중하는 태도로 활동해주세요</Text>
         </View>

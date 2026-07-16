@@ -1,18 +1,27 @@
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { ScheduleStackParamList } from '../../navigation/types';
-import { getMyRsvp, listAttendeeIds, listSchedules, setRsvp } from '../../data/schedules';
+import { deleteSchedule, getMyRsvp, listAttendeeIds, listSchedules, setRsvp, updateSchedule } from '../../data/schedules';
 import { listMembers } from '../../data/users';
 import { CREW_LABEL, Rsvp, Schedule } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { can } from '../../lib/permissions';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { alert } from '../../lib/alert';
+import { confirmDestructive } from '../../lib/confirm';
 
 type Props = NativeStackScreenProps<ScheduleStackParamList, 'ScheduleDetail'>;
+
+function toDateInput(iso: string): string {
+  return iso.slice(0, 10);
+}
+function toTimeInput(iso: string): string {
+  return new Date(iso).toTimeString().slice(0, 5);
+}
 
 export default function ScheduleDetailScreen({ route, navigation }: Props) {
   const { scheduleId } = route.params;
@@ -20,6 +29,12 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [myRsvp, setMyRsvp] = useState<Rsvp | undefined>();
   const [attendees, setAttendees] = useState<string[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState('');
+  const [place, setPlace] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [capacity, setCapacity] = useState('');
   const tier = user?.tier ?? 'guest';
   const canSeeAttendees = can(tier, 'attendance');
 
@@ -57,10 +72,86 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
 
   if (!schedule) return null;
 
+  const canManage = schedule.createdBy === user?.id || tier === 'admin' || Boolean(user?.isMaster);
+
+  const startEdit = () => {
+    setTitle(schedule.title);
+    setPlace(schedule.place);
+    setDate(toDateInput(schedule.startAt));
+    setTime(toTimeInput(schedule.startAt));
+    setCapacity(String(schedule.capacity));
+    setEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!title.trim() || !place.trim()) return;
+    const startAt = new Date(`${date}T${time}:00`);
+    if (Number.isNaN(startAt.getTime())) {
+      alert('날짜/시간 형식을 확인해주세요 (예: 2026-07-20, 19:00)');
+      return;
+    }
+    try {
+      await updateSchedule(scheduleId, {
+        title: title.trim(),
+        place: place.trim(),
+        startAt: startAt.toISOString(),
+        capacity: Number(capacity) || schedule.capacity,
+      });
+      setEditing(false);
+      listSchedules().then((list) => setSchedule(list.find((s) => s.id === scheduleId) ?? null));
+    } catch (e) {
+      alert('수정 실패', e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const handleDelete = () => {
+    confirmDestructive('일정 삭제', '이 일정을 삭제할까요?', async () => {
+      try {
+        await deleteSchedule(scheduleId);
+        navigation.goBack();
+      } catch (e) {
+        alert('삭제 실패', e instanceof Error ? e.message : String(e));
+      }
+    });
+  };
+
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="일정 상세" onBack={() => navigation.goBack()} />
+      <ScreenHeader
+        title="일정 상세"
+        onBack={() => navigation.goBack()}
+        right={
+          canManage && !editing ? (
+            <View style={styles.headerActions}>
+              <TouchableOpacity onPress={startEdit}>
+                <Ionicons name="create-outline" size={20} color={colors.text} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDelete}>
+                <Ionicons name="trash-outline" size={20} color={colors.danger} />
+              </TouchableOpacity>
+            </View>
+          ) : null
+        }
+      />
       <ScrollView contentContainerStyle={styles.content}>
+        {editing ? (
+          <>
+            <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="제목" />
+            <TextInput style={styles.input} value={date} onChangeText={setDate} placeholder="날짜 (YYYY-MM-DD)" />
+            <TextInput style={styles.input} value={time} onChangeText={setTime} placeholder="시간 (HH:mm)" />
+            <TextInput style={styles.input} value={place} onChangeText={setPlace} placeholder="장소" />
+            <TextInput style={styles.input} value={capacity} onChangeText={setCapacity} placeholder="정원" keyboardType="number-pad" />
+            <View style={styles.editActions}>
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setEditing(false)}>
+                <Text style={styles.cancelButtonText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveEdit}>
+                <Text style={styles.saveButtonText}>저장</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <>
         <View style={[styles.crewChip, { backgroundColor: colors.crew[schedule.crew] }]}>
           <Text style={styles.crewChipText}>{CREW_LABEL[schedule.crew]}</Text>
         </View>
@@ -105,6 +196,8 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
         ) : (
           <Text style={styles.lockNote}>랄잡부터 참석자 명단을 볼 수 있어요</Text>
         )}
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -113,6 +206,13 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  headerActions: { flexDirection: 'row', gap: spacing.md },
+  input: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radius.tile, paddingHorizontal: spacing.md, paddingVertical: 12, fontSize: 14, marginBottom: spacing.md },
+  editActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
+  cancelButton: { flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: radius.card, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line },
+  cancelButtonText: { fontWeight: '700', color: colors.text },
+  saveButton: { flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: radius.card, backgroundColor: colors.gold },
+  saveButtonText: { fontWeight: '700', color: colors.white },
   crewChip: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, marginBottom: spacing.md },
   crewChipText: { color: colors.white, fontSize: 12, fontWeight: '700' },
   title: { fontSize: 22, fontWeight: '800', color: colors.text, marginBottom: spacing.sm },

@@ -16,12 +16,12 @@ import { alert } from '../../lib/alert';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Members'>;
 
-const TIER_ORDER: Tier[] = ['guest', 'raljab', 'talbuchak', 'taljuninja', 'akatsuki'];
+const TIER_ORDER: Tier[] = ['guest', 'raljab', 'talbuchak', 'taljuninja', 'akatsuki', 'admin'];
 
 export default function MembersScreen({ navigation }: Props) {
   const { user } = useAuth();
   const tier = user?.tier ?? 'guest';
-  const isAdmin = can(tier, 'adjustTier');
+  const isAdmin = can(tier, 'adjustTier') || Boolean(user?.isMaster);
   const [members, setMembers] = useState<AppUser[]>([]);
   const [pending, setPending] = useState<AppUser[]>([]);
   const [showRealName, setShowRealName] = useState(false);
@@ -75,8 +75,8 @@ export default function MembersScreen({ navigation }: Props) {
 
   const handleSelectTier = async (nextTier: Tier) => {
     if (!pickerMember) return;
-    if (nextTier === 'akatsuki' && !user?.isMaster) {
-      alert('권한 없음', '관리자(아카츠키) 임명은 마스터만 할 수 있습니다.');
+    if (nextTier === 'admin' && !user?.isMaster) {
+      alert('권한 없음', '관리자 임명은 마스터만 할 수 있습니다.');
       return;
     }
     try {

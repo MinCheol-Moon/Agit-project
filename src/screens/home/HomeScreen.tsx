@@ -41,7 +41,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [notices, setNotices] = useState<Notice[]>([]);
 
   const tier = user?.tier ?? 'guest';
-  const canManageNotices = tier === 'akatsuki';
+  const canManageNotices = tier === 'admin' || Boolean(user?.isMaster);
 
   useFocusEffect(
     useCallback(() => {

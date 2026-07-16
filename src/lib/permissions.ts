@@ -22,11 +22,11 @@ export const PERMISSIONS = {
   vote: 3,
   memberList: 3,
   createSchedule: 3,
-  uploadReceipt: 4,
-  setDepositDay: 4,
-  viewRealName: 4,
-  adjustTier: 4,
-  approveSignup: 4,
+  uploadReceipt: 5,
+  setDepositDay: 5,
+  viewRealName: 5,
+  adjustTier: 5,
+  approveSignup: 5,
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

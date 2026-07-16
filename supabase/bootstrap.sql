@@ -4,7 +4,7 @@
 -- Core schema for 아지트 (Agit) app
 create extension if not exists "pgcrypto";
 
-create type tier as enum ('guest', 'raljab', 'talbuchak', 'taljuninja', 'akatsuki');
+create type tier as enum ('guest', 'raljab', 'talbuchak', 'taljuninja', 'akatsuki', 'admin');
 create type user_status as enum ('pending', 'active', 'expelled');
 create type crew as enum ('game', 'tea', 'fishing', 'hiking');
 create type rsvp_status as enum ('yes', 'no');
@@ -171,7 +171,7 @@ create table attendance_month (
   unique (user_id, year_month)
 );
 
--- Home notices ("공지글"): visible to everyone, written/deleted by akatsuki only.
+-- Home notices ("공지글"): visible to everyone, written/deleted by admin/master only.
 create table notices (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -194,6 +194,7 @@ language sql immutable as $$
     when 'talbuchak' then 2
     when 'taljuninja' then 3
     when 'akatsuki' then 4
+    when 'admin' then 5
   end
 $$;
 
@@ -207,9 +208,12 @@ language sql stable security definer set search_path = public as $$
   select coalesce(tier_rank((select tier from users where id = auth.uid())), 0)
 $$;
 
+-- Despite the name, this checks the 'admin' tier - not 'akatsuki', which is
+-- just the highest ordinary member tier and carries no admin powers on its
+-- own. Kept as-is (not renamed) since every admin-gated policy calls it.
 create or replace function is_akatsuki() returns boolean
 language sql stable security definer set search_path = public as $$
-  select coalesce((select tier = 'akatsuki' or is_master from users where id = auth.uid()), false)
+  select coalesce((select tier = 'admin' or is_master from users where id = auth.uid()), false)
 $$;
 
 alter table users enable row level security;
@@ -250,6 +254,7 @@ grant select on member_directory to authenticated, anon;
 create policy schedules_select on schedules for select using (true);
 create policy schedules_insert on schedules for insert with check (current_tier_rank() >= 3);
 create policy schedules_update_own on schedules for update using (created_by = auth.uid() or is_akatsuki());
+create policy schedules_delete_own_or_admin on schedules for delete using (created_by = auth.uid() or is_akatsuki());
 
 -- rsvps: view own / all, write requires rank >= 1 (raljab)
 create policy rsvps_select on rsvps for select using (current_tier_rank() >= 1);
@@ -262,8 +267,8 @@ create policy attendances_insert on attendances for insert with check (user_id =
 
 -- dues_ledger: expenses visible to all, income/balance detail requires rank >= 2, write requires rank >= 4
 create policy dues_ledger_select_expense on dues_ledger for select using (type = 'expense' or current_tier_rank() >= 2);
-create policy dues_ledger_insert on dues_ledger for insert with check (current_tier_rank() >= 4);
-create policy dues_ledger_update on dues_ledger for update using (current_tier_rank() >= 4);
+create policy dues_ledger_insert on dues_ledger for insert with check (is_akatsuki());
+create policy dues_ledger_update on dues_ledger for update using (is_akatsuki());
 
 -- Self-service: any member (rank >= talbuchak) may insert their OWN payment
 -- record, tagged to their own member_id — no OCR name-matching needed since
@@ -274,7 +279,7 @@ create policy dues_ledger_insert_self on dues_ledger for insert
 
 -- dues_settings: read requires rank >= 2 (balance context), write requires rank >= 4
 create policy dues_settings_select on dues_settings for select using (current_tier_rank() >= 2);
-create policy dues_settings_update on dues_settings for update using (current_tier_rank() >= 4);
+create policy dues_settings_update on dues_settings for update using (is_akatsuki());
 
 -- posts/comments/likes: community requires rank >= 3
 create policy posts_select on posts for select using (current_tier_rank() >= 3);
@@ -299,7 +304,7 @@ create policy votes_insert on votes for insert with check (current_tier_rank() >
 create policy vote_options_insert on vote_options for insert with check (current_tier_rank() >= 3);
 create policy vote_responses_insert on vote_responses for insert with check (user_id = auth.uid() and current_tier_rank() >= 3);
 
--- tier_logs / real_name_view_logs: akatsuki only
+-- tier_logs / real_name_view_logs: admin/master only
 create policy tier_logs_select on tier_logs for select using (user_id = auth.uid() or is_akatsuki());
 create policy real_name_logs_select on real_name_view_logs for select using (is_akatsuki());
 create policy real_name_logs_insert on real_name_view_logs for insert with check (viewer_id = auth.uid() and is_akatsuki());
@@ -307,7 +312,7 @@ create policy real_name_logs_insert on real_name_view_logs for insert with check
 -- attendance_month: self or admin
 create policy attendance_month_select on attendance_month for select using (user_id = auth.uid() or current_tier_rank() >= 3);
 
--- notices: visible to everyone, written/deleted by akatsuki only
+-- notices: visible to everyone, written/deleted by admin/master only
 create policy notices_select on notices for select using (true);
 create policy notices_insert on notices for insert with check (is_akatsuki());
 create policy notices_update on notices for update using (is_akatsuki());
@@ -428,10 +433,10 @@ insert into storage.buckets (id, name, public) values ('dues-receipts', 'dues-re
 insert into storage.buckets (id, name, public) values ('post-images', 'post-images', true) on conflict do nothing;
 
 create policy dues_receipts_admin_write on storage.objects for insert
-  with check (bucket_id = 'dues-receipts' and current_tier_rank() >= 4);
+  with check (bucket_id = 'dues-receipts' and is_akatsuki());
 
 create policy dues_receipts_admin_read on storage.objects for select
-  using (bucket_id = 'dues-receipts' and current_tier_rank() >= 4);
+  using (bucket_id = 'dues-receipts' and is_akatsuki());
 
 -- Self-service: any member (rank >= talbuchak) may upload their own receipt.
 create policy dues_receipts_self_write on storage.objects for insert
@@ -574,7 +579,7 @@ create policy direct_messages_delete_own on direct_messages for delete
 -- MANUAL, ONE-TIME: run this separately AFTER you've opened the app once and
 -- submitted the signup form yourself (that creates your `pending` row). It
 -- promotes you to the master admin so you can approve everyone else.
--- update users set is_master = true, tier = 'akatsuki', status = 'active'
+-- update users set is_master = true, tier = 'admin', status = 'active'
 --   where nickname = '여기에_본인_닉네임';
 -- ---------------------------------------------------------------------------
 

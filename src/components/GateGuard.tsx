@@ -12,6 +12,7 @@ const RANK_TO_TIER: Record<number, Tier> = {
   2: 'talbuchak',
   3: 'taljuninja',
   4: 'akatsuki',
+  5: 'admin',
 };
 
 export function GateGuard({

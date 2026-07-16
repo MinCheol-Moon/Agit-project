@@ -52,6 +52,40 @@ export async function createSchedule(input: {
   });
 }
 
+export async function updateSchedule(
+  scheduleId: string,
+  input: { title: string; place: string; startAt: string; capacity: number },
+): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('schedules')
+      .update({ title: input.title, place: input.place, start_at: input.startAt, capacity: input.capacity })
+      .eq('id', scheduleId)
+      .select('id');
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error('수정 권한이 없거나 서버 설정(마이그레이션)이 아직 반영되지 않았어요.');
+    return;
+  }
+  const schedule = mockSchedules.find((s) => s.id === scheduleId);
+  if (schedule) {
+    schedule.title = input.title;
+    schedule.place = input.place;
+    schedule.startAt = input.startAt;
+    schedule.capacity = input.capacity;
+  }
+}
+
+export async function deleteSchedule(scheduleId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('schedules').delete().eq('id', scheduleId).select('id');
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error('삭제 권한이 없거나 서버 설정(마이그레이션)이 아직 반영되지 않았어요.');
+    return;
+  }
+  const idx = mockSchedules.findIndex((s) => s.id === scheduleId);
+  if (idx >= 0) mockSchedules.splice(idx, 1);
+}
+
 export async function setRsvp(scheduleId: string, status: RsvpStatus): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     const { error } = await supabase

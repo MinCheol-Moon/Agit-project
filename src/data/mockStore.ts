@@ -31,7 +31,7 @@ export const mockUsers: AppUser[] = [
     nickname: '고스트',
     phone: '010-1234-5678',
     crews: ['game', 'fishing'],
-    tier: 'akatsuki',
+    tier: 'admin',
     isMaster: true,
     status: 'active',
     monthlyAttendance: 3,

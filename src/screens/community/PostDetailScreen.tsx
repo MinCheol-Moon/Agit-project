@@ -35,7 +35,7 @@ export default function PostDetailScreen({ route, navigation }: Props) {
 
   if (!post) return null;
 
-  const canManage = post.userId === user?.id || user?.tier === 'akatsuki';
+  const canManage = post.userId === user?.id || user?.tier === 'admin' || Boolean(user?.isMaster);
 
   const handleLike = async () => {
     try {

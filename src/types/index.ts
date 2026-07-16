@@ -1,4 +1,4 @@
-export type Tier = 'guest' | 'raljab' | 'talbuchak' | 'taljuninja' | 'akatsuki';
+export type Tier = 'guest' | 'raljab' | 'talbuchak' | 'taljuninja' | 'akatsuki' | 'admin';
 
 export const TIER_RANK: Record<Tier, number> = {
   guest: 0,
@@ -6,14 +6,16 @@ export const TIER_RANK: Record<Tier, number> = {
   talbuchak: 2,
   taljuninja: 3,
   akatsuki: 4,
+  admin: 5,
 };
 
 export const TIER_LABEL: Record<Tier, string> = {
-  guest: '전체',
+  guest: '거수자',
   raljab: '랄잡',
   talbuchak: '탈부착',
   taljuninja: '탈주닌자',
   akatsuki: '아카츠키',
+  admin: '관리자',
 };
 
 export type UserStatus = 'pending' | 'active' | 'expelled';

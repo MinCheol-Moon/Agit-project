@@ -9,6 +9,7 @@ const TIER_STYLE: Record<Tier, { bg: string; text: string }> = {
   talbuchak: { bg: colors.cream, text: colors.creamText },
   taljuninja: { bg: colors.cardDark, text: colors.goldLight },
   akatsuki: { bg: colors.gold, text: '#191c22' },
+  admin: { bg: '#191c22', text: colors.gold },
 };
 
 export function TierBadge({ tier, size = 'md' }: { tier: Tier; size?: 'sm' | 'md' }) {
