@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { confirmDestructive } from '../../lib/confirm';
 import { alert } from '../../lib/alert';
+import { useKeyboardInset } from '../../lib/useKeyboardInset';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'DmRoom'>;
 
@@ -20,6 +21,7 @@ export default function DmRoomScreen({ route, navigation }: Props) {
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [input, setInput] = useState('');
   const listRef = useRef<FlatList>(null);
+  const keyboardInset = useKeyboardInset();
 
   const load = useCallback(async () => {
     setMessages(await listDirectMessages(otherUserId));
@@ -100,7 +102,7 @@ export default function DmRoomScreen({ route, navigation }: Props) {
           );
         }}
       />
-      <View style={styles.inputRow}>
+      <View style={[styles.inputRow, keyboardInset > 0 && { marginBottom: keyboardInset }]}>
         <TextInput style={styles.input} value={input} onChangeText={setInput} placeholder="메시지 입력" />
         <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
           <Text style={styles.sendButtonText}>전송</Text>
