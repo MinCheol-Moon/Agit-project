@@ -1,6 +1,7 @@
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { MainTabParamList } from './types';
 import { colors } from '../theme/colors';
 import HomeStackNavigator from './HomeStackNavigator';
@@ -10,6 +11,10 @@ import CommunityStackNavigator from './CommunityStackNavigator';
 import MyStackNavigator from './MyStackNavigator';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
+
+// Hide the bottom tab bar while inside an actual conversation, so it doesn't
+// sit between the chat input and the keyboard.
+const HIDE_TAB_BAR_ROUTES = ['ChatRoom', 'DmRoom'];
 
 const ICONS: Record<keyof MainTabParamList, keyof typeof Ionicons.glyphMap> = {
   HomeTab: 'home',
@@ -42,7 +47,16 @@ export default function MainTabNavigator() {
     >
       <Tab.Screen name="HomeTab" component={HomeStackNavigator} />
       <Tab.Screen name="ScheduleTab" component={ScheduleStackNavigator} />
-      <Tab.Screen name="ChatTab" component={ChatStackNavigator} />
+      <Tab.Screen
+        name="ChatTab"
+        component={ChatStackNavigator}
+        options={({ route }) => {
+          const focused = getFocusedRouteNameFromRoute(route);
+          return focused && HIDE_TAB_BAR_ROUTES.includes(focused)
+            ? { tabBarStyle: { display: 'none' } }
+            : {};
+        }}
+      />
       <Tab.Screen name="CommunityTab" component={CommunityStackNavigator} />
       <Tab.Screen name="MyTab" component={MyStackNavigator} />
     </Tab.Navigator>

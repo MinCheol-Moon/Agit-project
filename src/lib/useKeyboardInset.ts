@@ -1,35 +1,35 @@
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
-// How much the on-screen keyboard is covering the bottom of the screen on
-// mobile WEB, so a chat input pinned to the bottom can be lifted above it.
+// The height actually visible above the on-screen keyboard, on mobile WEB.
 //
-// Native Android/iOS already handle this: Android via softwareKeyboardLayoutMode
-// "resize" (window shrinks so the input rises on its own), iOS via
-// KeyboardAvoidingView. Web has neither - react-native-web's Keyboard events
-// don't fire for the on-screen keyboard - so the browser's visualViewport
-// (which shrinks when the keyboard opens) is the only signal, and this is what
-// was missing that left the input hidden behind the keyboard on mobile web.
-// Returns 0 on native to avoid double-counting with the native mechanisms.
-export function useKeyboardInset(): number {
-  const [inset, setInset] = useState(0);
+// When the soft keyboard opens, the browser's visualViewport shrinks. By
+// sizing the chat screen to exactly this height (instead of the full window),
+// the input pinned to its bottom lands right above the keyboard - no browser
+// auto-scroll (which was cutting off the top messages) and no leftover gap.
+// Returns null on native, where the OS handles it (Android resize / iOS
+// KeyboardAvoidingView) and this hook must not interfere.
+export function useWebViewportHeight(): number | null {
+  const [height, setHeight] = useState<number | null>(null);
 
   useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    const vv = typeof window !== 'undefined' ? window.visualViewport : null;
-    if (!vv) return;
-    const update = () => {
-      const covered = window.innerHeight - vv.height - vv.offsetTop;
-      setInset(covered > 80 ? covered : 0);
-    };
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const vv = window.visualViewport;
+    const update = () => setHeight(vv ? vv.height : window.innerHeight);
     update();
+    if (vv) {
+      vv.addEventListener('resize', update);
+      vv.addEventListener('scroll', update);
+    }
+    window.addEventListener('resize', update);
     return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
+      if (vv) {
+        vv.removeEventListener('resize', update);
+        vv.removeEventListener('scroll', update);
+      }
+      window.removeEventListener('resize', update);
     };
   }, []);
 
-  return inset;
+  return height;
 }

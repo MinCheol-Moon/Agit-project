@@ -13,7 +13,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { Avatar } from '../../components/Avatar';
 import { confirmDestructive } from '../../lib/confirm';
 import { alert } from '../../lib/alert';
-import { useKeyboardInset } from '../../lib/useKeyboardInset';
+import { useWebViewportHeight } from '../../lib/useKeyboardInset';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'ChatRoom'>;
 
@@ -24,7 +24,7 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
   const [profiles, setProfiles] = useState<Record<string, { nickname: string; avatarUrl?: string | null }>>({});
   const [input, setInput] = useState('');
   const listRef = useRef<FlatList>(null);
-  const keyboardInset = useKeyboardInset();
+  const webHeight = useWebViewportHeight();
 
   const load = useCallback(async () => {
     const [msgs, members] = await Promise.all([listMessages(roomId), listMembers()]);
@@ -75,7 +75,10 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={[styles.screen, webHeight != null && { height: webHeight, flex: undefined }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScreenHeader title={roomName} onBack={() => navigation.goBack()} />
       <FlatList
         ref={listRef}
@@ -124,7 +127,7 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
           );
         }}
       />
-      <View style={[styles.inputRow, keyboardInset > 0 && { marginBottom: keyboardInset }]}>
+      <View style={styles.inputRow}>
         <TextInput style={styles.input} value={input} onChangeText={setInput} placeholder="메시지 입력" />
         <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
           <Text style={styles.sendButtonText}>전송</Text>
