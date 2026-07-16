@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +15,7 @@ import { LockedOverlay } from '../../components/LockedOverlay';
 type Props = NativeStackScreenProps<CommunityStackParamList, 'CommunityFeed'>;
 
 export default function CommunityScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const tier = user?.tier ?? 'guest';
   const [posts, setPosts] = useState<Post[]>([]);
@@ -28,7 +30,7 @@ export default function CommunityScreen({ navigation }: Props) {
 
   if (!can(tier, 'community')) {
     return (
-      <View style={styles.screen}>
+      <View style={[styles.screen, { paddingTop: insets.top }]}>
         <Text style={styles.title}>소통</Text>
         <View style={{ position: 'relative', flex: 1, margin: spacing.lg, borderRadius: radius.card, backgroundColor: colors.white }}>
           <LockedOverlay requiredTier="taljuninja" />
@@ -38,7 +40,7 @@ export default function CommunityScreen({ navigation }: Props) {
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Text style={styles.title}>소통</Text>
         <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('NewPost')}>

@@ -10,6 +10,7 @@ import { ChatMessage } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { listMembers } from '../../data/users';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { Avatar } from '../../components/Avatar';
 import { confirmDestructive } from '../../lib/confirm';
 import { alert } from '../../lib/alert';
 
@@ -19,14 +20,14 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
   const { roomId, roomName } = route.params;
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [nicknames, setNicknames] = useState<Record<string, string>>({});
+  const [profiles, setProfiles] = useState<Record<string, { nickname: string; avatarUrl?: string | null }>>({});
   const [input, setInput] = useState('');
   const listRef = useRef<FlatList>(null);
 
   const load = useCallback(async () => {
     const [msgs, members] = await Promise.all([listMessages(roomId), listMembers()]);
     setMessages(msgs);
-    setNicknames(Object.fromEntries(members.map((m) => [m.id, m.nickname])));
+    setProfiles(Object.fromEntries(members.map((m) => [m.id, { nickname: m.nickname, avatarUrl: m.avatarUrl }])));
   }, [roomId]);
 
   useFocusEffect(
@@ -89,25 +90,33 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
             );
           }
           const mine = item.userId === user?.id;
-          return (
-            <View style={[styles.bubbleRow, mine && styles.bubbleRowMine]}>
-              {!mine && <Text style={styles.nickname}>{nicknames[item.userId] ?? '회원'}</Text>}
-              <View style={[styles.bubbleWithAction, mine && styles.bubbleWithActionMine]}>
-                {/* ponytail: long-press has no visible affordance and doesn't fire
-                    reliably on web mouse input, so own messages also get a plain
-                    visible delete button instead of relying on it alone. */}
-                {mine && (
+          if (mine) {
+            return (
+              <View style={[styles.bubbleRow, styles.bubbleRowMine]}>
+                <View style={[styles.bubbleWithAction, styles.bubbleWithActionMine]}>
                   <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteIcon} hitSlop={8}>
                     <Ionicons name="trash-outline" size={14} color={colors.textMuted} />
                   </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  activeOpacity={mine ? 0.6 : 1}
-                  onLongPress={mine ? () => handleDelete(item.id) : undefined}
-                  style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
-                >
-                  <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.body}</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.6}
+                    onLongPress={() => handleDelete(item.id)}
+                    style={[styles.bubble, styles.bubbleMine]}
+                  >
+                    <Text style={styles.bubbleTextMine}>{item.body}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          }
+          const profile = profiles[item.userId];
+          return (
+            <View style={styles.otherRow}>
+              <Avatar url={profile?.avatarUrl} name={profile?.nickname ?? '회원'} size={34} />
+              <View style={styles.otherContent}>
+                <Text style={styles.nickname}>{profile?.nickname ?? '회원'}</Text>
+                <View style={[styles.bubble, styles.bubbleOther, styles.bubbleOtherAlign]}>
+                  <Text style={styles.bubbleTextOther}>{item.body}</Text>
+                </View>
               </View>
             </View>
           );
@@ -128,15 +137,21 @@ const styles = StyleSheet.create({
   list: { padding: spacing.lg, gap: spacing.sm },
   bubbleRow: { alignItems: 'flex-start', marginBottom: spacing.xs },
   bubbleRowMine: { alignItems: 'flex-end' },
+  otherRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs, paddingRight: spacing.xl },
+  otherContent: { flexShrink: 1 },
   nickname: { fontSize: 11, color: colors.textMuted, marginBottom: 2, marginLeft: 4 },
-  bubbleWithAction: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  // ponytail: maxWidth must live on the outer row-constrained wrapper - a
+  // percentage on the auto-sized bubble referenced its own auto width and
+  // collapsed the text to one character per line.
+  bubbleWithAction: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '80%' },
   bubbleWithActionMine: { flexDirection: 'row-reverse' },
   deleteIcon: { padding: 4 },
   systemRow: { alignItems: 'center', marginBottom: spacing.xs },
   systemText: { fontSize: 12, color: colors.creamText, backgroundColor: colors.cream, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6, overflow: 'hidden' },
-  bubble: { maxWidth: '75%', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.tile },
+  bubble: { flexShrink: 1, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.tile },
   bubbleMine: { backgroundColor: colors.goldLight },
   bubbleOther: { backgroundColor: colors.white },
+  bubbleOtherAlign: { alignSelf: 'flex-start' },
   bubbleTextMine: { color: '#191c22' },
   bubbleTextOther: { color: colors.text },
   inputRow: { flexDirection: 'row', padding: spacing.md, gap: spacing.sm, backgroundColor: colors.white },

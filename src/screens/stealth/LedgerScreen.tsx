@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, spacing } from '../../theme/colors';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StealthStackParamList } from '../../navigation/types';
@@ -15,6 +16,7 @@ const TRANSACTIONS = [
 ];
 
 export default function LedgerScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const tapCount = useRef(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -34,7 +36,7 @@ export default function LedgerScreen({ navigation }: Props) {
   const balance = TRANSACTIONS.reduce((sum, t) => sum + t.amount, 0);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.screen, { paddingTop: insets.top }]} contentContainerStyle={styles.content}>
       <TouchableOpacity activeOpacity={1} onLongPress={() => navigation.navigate('Pin')} delayLongPress={900}>
         <Text style={styles.title}>가계부</Text>
       </TouchableOpacity>

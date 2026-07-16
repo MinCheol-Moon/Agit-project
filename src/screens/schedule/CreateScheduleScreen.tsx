@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, radius, spacing } from '../../theme/colors';
 import { ScheduleStackParamList } from '../../navigation/types';
 import { createSchedule } from '../../data/schedules';
@@ -17,18 +19,26 @@ function defaultDate(): string {
   return d.toISOString().slice(0, 10);
 }
 
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
 export default function CreateScheduleScreen({ navigation }: Props) {
   const [title, setTitle] = useState('');
   const [place, setPlace] = useState('');
-  const [capacity, setCapacity] = useState('10');
+  const [capacity, setCapacity] = useState('');
   const [crew, setCrew] = useState<Crew>('game');
-  const [date, setDate] = useState(defaultDate());
-  const [time, setTime] = useState('19:00');
+  // Empty by default so the field shows a light placeholder hint instead of
+  // what looks like already-entered text; submit falls back to the defaults.
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async () => {
     if (!title || !place) return;
-    const startAt = new Date(`${date}T${time}:00`);
+    const startAt = new Date(`${date || defaultDate()}T${time || '19:00'}:00`);
     if (Number.isNaN(startAt.getTime())) {
       setError('날짜/시간 형식을 확인해주세요 (예: 2026-07-20, 19:00)');
       return;
@@ -41,6 +51,10 @@ export default function CreateScheduleScreen({ navigation }: Props) {
       setError(e instanceof Error ? e.message : String(e));
     }
   };
+
+  // ponytail: the native calendar/wheel pickers don't exist on web - there,
+  // plain text input (already supported) is the whole story.
+  const pickersAvailable = Platform.OS !== 'web';
 
   return (
     <View style={styles.screen}>
@@ -62,17 +76,70 @@ export default function CreateScheduleScreen({ navigation }: Props) {
         <Text style={styles.label}>제목</Text>
         <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="모임 제목" />
 
-        <Text style={styles.label}>날짜 (YYYY-MM-DD)</Text>
-        <TextInput style={styles.input} value={date} onChangeText={setDate} placeholder="2026-07-20" />
+        <Text style={styles.label}>날짜</Text>
+        <View style={styles.pickerRow}>
+          <TextInput
+            style={[styles.input, styles.pickerInput]}
+            value={date}
+            onChangeText={setDate}
+            placeholder={`예: ${defaultDate()}`}
+          />
+          {pickersAvailable && (
+            <TouchableOpacity style={styles.pickerButton} onPress={() => setShowDatePicker(true)}>
+              <Ionicons name="calendar-outline" size={20} color={colors.gold} />
+            </TouchableOpacity>
+          )}
+        </View>
+        {showDatePicker && (
+          <DateTimePicker
+            value={date ? new Date(`${date}T12:00:00`) : new Date(`${defaultDate()}T12:00:00`)}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+            onChange={(event, selected) => {
+              setShowDatePicker(Platform.OS === 'ios');
+              if (selected) {
+                setDate(`${selected.getFullYear()}-${pad2(selected.getMonth() + 1)}-${pad2(selected.getDate())}`);
+                if (Platform.OS === 'ios') setShowDatePicker(false);
+              }
+            }}
+          />
+        )}
 
-        <Text style={styles.label}>시간 (HH:mm)</Text>
-        <TextInput style={styles.input} value={time} onChangeText={setTime} placeholder="19:00" />
+        <Text style={styles.label}>시간</Text>
+        <View style={styles.pickerRow}>
+          <TextInput
+            style={[styles.input, styles.pickerInput]}
+            value={time}
+            onChangeText={setTime}
+            placeholder="예: 19:00"
+          />
+          {pickersAvailable && (
+            <TouchableOpacity style={styles.pickerButton} onPress={() => setShowTimePicker(true)}>
+              <Ionicons name="time-outline" size={20} color={colors.gold} />
+            </TouchableOpacity>
+          )}
+        </View>
+        {showTimePicker && (
+          <DateTimePicker
+            value={new Date(`${defaultDate()}T${time || '19:00'}:00`)}
+            mode="time"
+            display="spinner"
+            minuteInterval={5}
+            onChange={(event, selected) => {
+              setShowTimePicker(Platform.OS === 'ios');
+              if (selected) {
+                setTime(`${pad2(selected.getHours())}:${pad2(selected.getMinutes())}`);
+                if (Platform.OS === 'ios') setShowTimePicker(false);
+              }
+            }}
+          />
+        )}
 
         <Text style={styles.label}>장소</Text>
         <TextInput style={styles.input} value={place} onChangeText={setPlace} placeholder="모임 장소" />
 
         <Text style={styles.label}>정원</Text>
-        <TextInput style={styles.input} value={capacity} onChangeText={setCapacity} keyboardType="number-pad" />
+        <TextInput style={styles.input} value={capacity} onChangeText={setCapacity} keyboardType="number-pad" placeholder="예: 10" />
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -100,6 +167,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
     fontSize: 14,
+  },
+  pickerRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  pickerInput: { flex: 1 },
+  pickerButton: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.tile,
+    padding: 11,
   },
   submitButton: {
     backgroundColor: colors.gold,

@@ -21,6 +21,8 @@ create table users (
   tier tier not null default 'guest',
   is_master boolean not null default false,
   status user_status not null default 'pending',
+  avatar_url text,
+  notify_chat boolean not null default true,
   pin_hash text,
   expo_push_token text,
   monthly_attendance int not null default 0,
@@ -180,6 +182,18 @@ create table notices (
   created_at timestamptz not null default now()
 );
 
+-- Comments (and one level of replies) on a schedule, KakaoTalk-style.
+create table schedule_comments (
+  id uuid primary key default gen_random_uuid(),
+  schedule_id uuid not null references schedules(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  parent_id uuid references schedule_comments(id) on delete cascade,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
+create index on schedule_comments (schedule_id, created_at);
+
 create index on rsvps (schedule_id);
 create index on attendances (schedule_id, checked_at);
 create index on messages (room_id, created_at);
@@ -234,6 +248,7 @@ alter table tier_logs enable row level security;
 alter table real_name_view_logs enable row level security;
 alter table attendance_month enable row level security;
 alter table notices enable row level security;
+alter table schedule_comments enable row level security;
 
 -- users: base table only selectable by self or akatsuki (real_name/phone live here).
 -- Everyone else reads the member_directory view below, which excludes real_name/phone/pin_hash.
@@ -245,7 +260,7 @@ create policy users_admin_update on users for update using (is_akatsuki());
 -- Runs with the migration role's privileges (table owner), so it is not subject to the
 -- restrictive base-table RLS above; this is what makes it safe to expose to all members.
 create view member_directory as
-  select id, nickname, crews, tier, is_master, status, monthly_attendance, total_attendance, created_at
+  select id, nickname, crews, tier, is_master, status, avatar_url, monthly_attendance, total_attendance, created_at
   from users;
 
 grant select on member_directory to authenticated;
@@ -311,6 +326,11 @@ create policy real_name_logs_insert on real_name_view_logs for insert with check
 
 -- attendance_month: self or admin
 create policy attendance_month_select on attendance_month for select using (user_id = auth.uid() or current_tier_rank() >= 3);
+
+-- schedule comments: members only; delete own or admin
+create policy schedule_comments_select on schedule_comments for select using (current_tier_rank() >= 1);
+create policy schedule_comments_insert on schedule_comments for insert with check (user_id = auth.uid() and current_tier_rank() >= 1);
+create policy schedule_comments_delete on schedule_comments for delete using (user_id = auth.uid() or is_akatsuki());
 
 -- notices: visible to everyone, written/deleted by admin/master only
 create policy notices_select on notices for select using (current_tier_rank() >= 1);
@@ -447,6 +467,18 @@ create policy post_images_read on storage.objects for select
 
 create policy post_images_write on storage.objects for insert
   with check (bucket_id = 'post-images' and current_tier_rank() >= 3);
+
+-- Public avatars bucket; each member writes only inside their own {uid}/ folder.
+insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true) on conflict do nothing;
+
+create policy avatars_read on storage.objects for select
+  using (bucket_id = 'avatars');
+create policy avatars_write_own on storage.objects for insert
+  with check (bucket_id = 'avatars' and split_part(name, '/', 1) = auth.uid()::text);
+create policy avatars_update_own on storage.objects for update
+  using (bucket_id = 'avatars' and split_part(name, '/', 1) = auth.uid()::text);
+create policy avatars_delete_own on storage.objects for delete
+  using (bucket_id = 'avatars' and split_part(name, '/', 1) = auth.uid()::text);
 insert into chat_rooms (name, crew, min_tier) values
   ('전체방', null, 'talbuchak'),
   ('게임 크루', 'game', 'talbuchak'),
@@ -574,6 +606,87 @@ create policy messages_delete_own on messages for delete
 
 create policy direct_messages_delete_own on direct_messages for delete
   using (sender_id = auth.uid());
+
+-- Chat push notifications, straight from Postgres to Expo's push API via
+-- pg_net - no edge function to deploy. Failures are swallowed so a push
+-- hiccup can never block the chat message itself.
+create or replace function notify_new_chat_message() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  sender_name text;
+  payload jsonb;
+begin
+  if new.user_id is null then
+    return new; -- system messages (dues reminder) skip push
+  end if;
+
+  select nickname into sender_name from users where id = new.user_id;
+
+  select jsonb_agg(jsonb_build_object(
+    'to', u.expo_push_token,
+    'title', coalesce(sender_name, '회원'),
+    'body', left(new.body, 100),
+    'sound', 'default'
+  ))
+  into payload
+  from users u
+  where u.expo_push_token is not null
+    and u.notify_chat
+    and u.status = 'active'
+    and u.id <> new.user_id
+    and tier_rank(u.tier) >= 2;
+
+  if payload is not null then
+    perform net.http_post(
+      url := 'https://exp.host/--/api/v2/push/send',
+      headers := jsonb_build_object('Content-Type', 'application/json'),
+      body := payload
+    );
+  end if;
+
+  return new;
+exception when others then
+  return new;
+end;
+$$;
+
+create trigger messages_push_notify
+  after insert on messages
+  for each row execute function notify_new_chat_message();
+
+create or replace function notify_new_direct_message() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  sender_name text;
+  recipient_token text;
+begin
+  select nickname into sender_name from users where id = new.sender_id;
+  select expo_push_token into recipient_token
+  from users
+  where id = new.recipient_id and expo_push_token is not null and notify_chat and status = 'active';
+
+  if recipient_token is not null then
+    perform net.http_post(
+      url := 'https://exp.host/--/api/v2/push/send',
+      headers := jsonb_build_object('Content-Type', 'application/json'),
+      body := jsonb_build_object(
+        'to', recipient_token,
+        'title', coalesce(sender_name, '회원'),
+        'body', left(new.body, 100),
+        'sound', 'default'
+      )
+    );
+  end if;
+
+  return new;
+exception when others then
+  return new;
+end;
+$$;
+
+create trigger direct_messages_push_notify
+  after insert on direct_messages
+  for each row execute function notify_new_direct_message();
 
 -- ---------------------------------------------------------------------------
 -- MANUAL, ONE-TIME: run this separately AFTER you've opened the app once and

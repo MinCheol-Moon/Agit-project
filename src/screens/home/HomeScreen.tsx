@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,7 +27,6 @@ const GRID_ITEMS: { key: string; label: string; icon: IconName; permission: Perm
   { key: 'schedule', label: '일정', icon: 'calendar-outline', permission: 'viewBasicSchedule', action: (nav) => nav.navigate('ScheduleTab', { screen: 'ScheduleList' }) },
   { key: 'attendance', label: '출석', icon: 'checkmark-circle-outline', permission: 'attendance', action: (nav) => nav.navigate('HomeTab', { screen: 'Attendance' }) },
   { key: 'dues', label: '회비', icon: 'wallet-outline', permission: 'viewDuesExpenses', action: (nav) => nav.navigate('HomeTab', { screen: 'Dues' }) },
-  { key: 'vote', label: '투표', icon: 'bar-chart-outline', permission: 'vote', action: (nav) => nav.navigate('HomeTab', { screen: 'Vote' }) },
   { key: 'chat', label: '채팅', icon: 'chatbubbles-outline', permission: 'chat', action: (nav) => nav.navigate('ChatTab', { screen: 'ChatRoomList' }) },
   { key: 'gallery', label: '갤러리', icon: 'images-outline', permission: 'community', action: (nav) => nav.navigate('CommunityTab', { screen: 'CommunityFeed' }) },
   { key: 'members', label: '멤버', icon: 'people-outline', permission: 'memberList', action: (nav) => nav.navigate('HomeTab', { screen: 'Members' }) },
@@ -35,6 +35,7 @@ const GRID_ITEMS: { key: string; label: string; icon: IconName; permission: Perm
 ];
 
 export default function HomeScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const nav = useNavigation<Nav>();
   const { user } = useAuth();
   const [upcoming, setUpcoming] = useState<Schedule | null>(null);
@@ -62,7 +63,7 @@ export default function HomeScreen({ navigation }: Props) {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.screen, { paddingTop: insets.top }]} contentContainerStyle={styles.content}>
       <View style={styles.headerRow}>
         <View>
           <Text style={styles.logo}>아지트</Text>

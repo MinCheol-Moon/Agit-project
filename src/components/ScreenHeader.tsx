@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing } from '../theme/colors';
 
 export function ScreenHeader({
@@ -11,8 +12,9 @@ export function ScreenHeader({
   onBack?: () => void;
   right?: React.ReactNode;
 }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
       {onBack ? (
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹</Text>

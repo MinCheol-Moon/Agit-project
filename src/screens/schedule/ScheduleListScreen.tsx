@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radius, spacing } from '../../theme/colors';
@@ -19,6 +20,7 @@ function attendeeSummary(nicknames: string[]): string {
 }
 
 export default function ScheduleListScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [attendeesByScheduleId, setAttendeesByScheduleId] = useState<Map<string, string[]>>(new Map());
@@ -43,7 +45,7 @@ export default function ScheduleListScreen({ navigation }: Props) {
   );
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Text style={styles.title}>일정</Text>
         {can(tier, 'createSchedule') && (

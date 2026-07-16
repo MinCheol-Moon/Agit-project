@@ -15,7 +15,6 @@ export type HomeStackParamList = {
   Home: undefined;
   Attendance: undefined;
   Dues: undefined;
-  Vote: undefined;
   Members: undefined;
   Rules: undefined;
   Store: undefined;

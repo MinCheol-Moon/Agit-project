@@ -1,28 +1,74 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { colors, radius, spacing } from '../../theme/colors';
 import { MainTabParamList, MyStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import { useAppLock } from '../../context/AppLockContext';
 import { TierBadge } from '../../components/TierBadge';
+import { Avatar } from '../../components/Avatar';
 import { CREW_LABEL } from '../../types';
-import { logOut } from '../../data/users';
+import { logOut, removeAvatar, updateAvatar, updateNotifyChat } from '../../data/users';
+import { alert } from '../../lib/alert';
+import { confirmDestructive } from '../../lib/confirm';
 
 type Props = NativeStackScreenProps<MyStackParamList, 'MyPage'>;
 type Nav = CompositeNavigationProp<Props['navigation'], BottomTabNavigationProp<MainTabParamList>>;
 
 export default function MyPageScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const nav = useNavigation<Nav>();
   const { user, refresh } = useAuth();
   const { lock } = useAppLock();
+  const [uploading, setUploading] = useState(false);
 
   const handleLogOut = async () => {
     await logOut();
     await refresh();
+  };
+
+  const handleChangeAvatar = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.6,
+    });
+    if (result.canceled) return;
+    setUploading(true);
+    try {
+      await updateAvatar(result.assets[0].uri);
+      await refresh();
+    } catch (e) {
+      alert('프로필 사진 변경 실패', e instanceof Error ? e.message : String(e));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    confirmDestructive('프로필 사진 삭제', '프로필 사진을 삭제할까요?', async () => {
+      try {
+        await removeAvatar();
+        await refresh();
+      } catch (e) {
+        alert('삭제 실패', e instanceof Error ? e.message : String(e));
+      }
+    });
+  };
+
+  const handleToggleNotifyChat = async (value: boolean) => {
+    try {
+      await updateNotifyChat(value);
+      await refresh();
+    } catch (e) {
+      alert('설정 저장 실패', e instanceof Error ? e.message : String(e));
+    }
   };
 
   if (!user) {
@@ -41,12 +87,25 @@ export default function MyPageScreen({ navigation }: Props) {
   const progress = Math.min(100, (user.monthlyAttendance / 4) * 100);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.screen, { paddingTop: insets.top }]} contentContainerStyle={styles.content}>
       <View style={styles.profileCard}>
         <View style={styles.profileTop}>
-          <Text style={styles.nickname}>{user.nickname}</Text>
+          <View style={styles.profileIdentity}>
+            <TouchableOpacity onPress={handleChangeAvatar} disabled={uploading}>
+              <Avatar url={user.avatarUrl} name={user.nickname} size={52} />
+              <View style={styles.avatarEditBadge}>
+                <Ionicons name="camera" size={11} color={colors.white} />
+              </View>
+            </TouchableOpacity>
+            <Text style={styles.nickname}>{user.nickname}</Text>
+          </View>
           <TierBadge tier={user.tier} isMaster={user.isMaster} />
         </View>
+        {user.avatarUrl ? (
+          <TouchableOpacity onPress={handleRemoveAvatar}>
+            <Text style={styles.avatarRemoveText}>프로필 사진 삭제</Text>
+          </TouchableOpacity>
+        ) : null}
         <Text style={styles.crews}>{user.crews.map((c) => CREW_LABEL[c]).join(' · ') || '소속 크루 없음'}</Text>
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
@@ -78,6 +137,11 @@ export default function MyPageScreen({ navigation }: Props) {
         <Text style={styles.ruleText}>· 3개월 연속 미참석 → 탈퇴 처리</Text>
       </View>
 
+      <View style={[styles.linkRow, styles.toggleRow]}>
+        <Text style={styles.linkText}>채팅 알림</Text>
+        <Switch value={user.notifyChat ?? true} onValueChange={handleToggleNotifyChat} />
+      </View>
+
       {user.isMaster && (
         <TouchableOpacity style={styles.linkRow} onPress={() => nav.navigate('HomeTab', { screen: 'Members' })}>
           <Text style={styles.linkText}>회원 관리 (등급 조정 · 관리자 임명)</Text>
@@ -103,6 +167,10 @@ const styles = StyleSheet.create({
   notice: { fontSize: 13, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xxl },
   profileCard: { backgroundColor: colors.cardDark, borderRadius: radius.card, padding: spacing.lg },
   profileTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  profileIdentity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  avatarEditBadge: { position: 'absolute', right: -2, bottom: -2, backgroundColor: colors.gold, borderRadius: 999, padding: 3 },
+  avatarRemoveText: { color: colors.textMuted, fontSize: 11, marginBottom: spacing.sm, textDecorationLine: 'underline' },
+  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   nickname: { color: colors.white, fontSize: 20, fontWeight: '800' },
   crews: { color: colors.textMuted, fontSize: 12, marginBottom: spacing.lg },
   statsRow: { flexDirection: 'row', gap: spacing.xl },

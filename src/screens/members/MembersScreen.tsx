@@ -10,6 +10,7 @@ import { AppUser, CREW_LABEL, TIER_LABEL, Tier } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { can } from '../../lib/permissions';
 import { TierBadge } from '../../components/TierBadge';
+import { Avatar } from '../../components/Avatar';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { confirmDestructive } from '../../lib/confirm';
 import { alert } from '../../lib/alert';
@@ -151,6 +152,7 @@ export default function MembersScreen({ navigation }: Props) {
               disabled={!isAdmin}
               onPress={() => setPickerMember(m)}
             >
+              <Avatar url={m.avatarUrl} name={m.nickname} size={38} />
               <View style={{ flex: 1 }}>
                 <View style={styles.memberNameRow}>
                   <Text style={styles.memberName}>
@@ -209,7 +211,7 @@ const styles = StyleSheet.create({
   approveText: { color: colors.white, fontWeight: '700', fontSize: 12 },
   rejectButton: { backgroundColor: colors.danger, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6 },
   rejectText: { color: colors.white, fontWeight: '700', fontSize: 12 },
-  memberRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.line },
+  memberRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.line },
   memberNameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   memberName: { fontSize: 14, fontWeight: '700', color: colors.text },
   memberMeta: { fontSize: 11, color: colors.textMuted, marginTop: 2 },

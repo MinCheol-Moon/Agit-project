@@ -10,6 +10,7 @@ import {
   Post,
   Rsvp,
   Schedule,
+  ScheduleComment,
   TierLog,
   Vote,
 } from '../types';
@@ -219,6 +220,11 @@ export const mockVotes: Vote[] = [
       { id: 'vo-2', voteId: 'v-1', label: '경기', count: 4 },
     ],
   },
+];
+
+export const mockScheduleComments: ScheduleComment[] = [
+  { id: 'sc-1', scheduleId: 's-1', userId: 'u-2', parentId: null, body: '몇 시까지 모여요?', createdAt: iso(-1, 12) },
+  { id: 'sc-2', scheduleId: 's-1', userId: CURRENT_USER_ID, parentId: 'sc-1', body: '30분 전까지 오면 됨', createdAt: iso(-1, 13) },
 ];
 
 export const mockNotices: Notice[] = [

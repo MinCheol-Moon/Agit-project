@@ -40,8 +40,19 @@ export interface AppUser {
   tier: Tier;
   isMaster: boolean;
   status: UserStatus;
+  avatarUrl?: string | null;
+  notifyChat?: boolean;
   monthlyAttendance: number;
   totalAttendance: number;
+  createdAt: string;
+}
+
+export interface ScheduleComment {
+  id: string;
+  scheduleId: string;
+  userId: string;
+  parentId?: string | null;
+  body: string;
   createdAt: string;
 }
 

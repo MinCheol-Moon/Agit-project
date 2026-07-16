@@ -20,6 +20,7 @@
     },
     "android": {
       "package": "com.agitproject.ledger",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -49,7 +50,14 @@
         {
           "icon": "./assets/icon.png"
         }
-      ]
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "빠른 로그인을 위해 Face ID를 사용합니다."
+        }
+      ],
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {

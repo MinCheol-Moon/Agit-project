@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, radius, spacing } from '../../theme/colors';
@@ -13,6 +14,7 @@ import { LockedOverlay } from '../../components/LockedOverlay';
 type Props = NativeStackScreenProps<ChatStackParamList, 'ChatRoomList'>;
 
 export default function ChatRoomListScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const tier = user?.tier ?? 'guest';
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
@@ -25,7 +27,7 @@ export default function ChatRoomListScreen({ navigation }: Props) {
 
   if (!can(tier, 'chat')) {
     return (
-      <View style={styles.screen}>
+      <View style={[styles.screen, { paddingTop: insets.top }]}>
         <Text style={styles.title}>채팅</Text>
         <View style={{ position: 'relative', flex: 1, margin: spacing.lg, borderRadius: radius.card, backgroundColor: colors.white }}>
           <LockedOverlay requiredTier="talbuchak" />
@@ -35,7 +37,7 @@ export default function ChatRoomListScreen({ navigation }: Props) {
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Text style={styles.title}>채팅</Text>
         <TouchableOpacity style={styles.dmButton} onPress={() => navigation.navigate('DmList')}>

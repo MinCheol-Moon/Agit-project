@@ -7,14 +7,18 @@ import { colors, radius, spacing } from '../../theme/colors';
 import { ScheduleStackParamList } from '../../navigation/types';
 import { deleteSchedule, getMyRsvp, listAttendeeIds, listSchedules, setRsvp, updateSchedule } from '../../data/schedules';
 import { listMembers } from '../../data/users';
-import { CREW_LABEL, Rsvp, Schedule } from '../../types';
+import { addScheduleComment, deleteScheduleComment, listScheduleComments } from '../../data/scheduleComments';
+import { CREW_LABEL, Rsvp, Schedule, ScheduleComment } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { can } from '../../lib/permissions';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { Avatar } from '../../components/Avatar';
 import { alert } from '../../lib/alert';
 import { confirmDestructive } from '../../lib/confirm';
 
 type Props = NativeStackScreenProps<ScheduleStackParamList, 'ScheduleDetail'>;
+
+type Profile = { nickname: string; avatarUrl?: string | null };
 
 function toDateInput(iso: string): string {
   return iso.slice(0, 10);
@@ -28,7 +32,11 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
   const { user } = useAuth();
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [myRsvp, setMyRsvp] = useState<Rsvp | undefined>();
-  const [attendees, setAttendees] = useState<string[]>([]);
+  const [attendees, setAttendees] = useState<Profile[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
+  const [comments, setComments] = useState<ScheduleComment[]>([]);
+  const [commentInput, setCommentInput] = useState('');
+  const [replyTo, setReplyTo] = useState<ScheduleComment | null>(null);
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState('');
   const [place, setPlace] = useState('');
@@ -39,20 +47,53 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
   const canSeeAttendees = can(tier, 'attendance');
 
   const loadAttendees = useCallback(async () => {
-    if (!canSeeAttendees) return;
-    const [ids, members] = await Promise.all([listAttendeeIds(scheduleId), listMembers()]);
-    const nicknameById = new Map(members.map((m) => [m.id, m.nickname]));
-    setAttendees(ids.map((id) => nicknameById.get(id) ?? '회원'));
+    const [ids, members] = await Promise.all([
+      canSeeAttendees ? listAttendeeIds(scheduleId) : Promise.resolve([]),
+      listMembers(),
+    ]);
+    const profileById: Record<string, Profile> = Object.fromEntries(
+      members.map((m) => [m.id, { nickname: m.nickname, avatarUrl: m.avatarUrl }]),
+    );
+    setProfiles(profileById);
+    setAttendees(ids.map((id) => profileById[id] ?? { nickname: '회원' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scheduleId, canSeeAttendees]);
+
+  const loadComments = useCallback(() => {
+    listScheduleComments(scheduleId).then(setComments).catch(() => {});
+  }, [scheduleId]);
 
   useFocusEffect(
     useCallback(() => {
       listSchedules().then((list) => setSchedule(list.find((s) => s.id === scheduleId) ?? null));
       getMyRsvp(scheduleId).then(setMyRsvp);
       loadAttendees();
-    }, [scheduleId, loadAttendees]),
+      loadComments();
+    }, [scheduleId, loadAttendees, loadComments]),
   );
+
+  const handleAddComment = async () => {
+    if (!commentInput.trim()) return;
+    try {
+      await addScheduleComment(scheduleId, commentInput.trim(), replyTo?.id);
+      setCommentInput('');
+      setReplyTo(null);
+      loadComments();
+    } catch (e) {
+      alert('댓글 등록 실패', e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    confirmDestructive('댓글 삭제', '이 댓글을 삭제할까요?', async () => {
+      try {
+        await deleteScheduleComment(commentId);
+        loadComments();
+      } catch (e) {
+        alert('삭제 실패', e instanceof Error ? e.message : String(e));
+      }
+    });
+  };
 
   const handleRsvp = async (status: 'yes' | 'no') => {
     if (!can(tier, 'scheduleRsvp')) {
@@ -185,9 +226,10 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
               <Text style={styles.attendeeEmpty}>아직 참석자가 없어요</Text>
             ) : (
               <View style={styles.attendeeList}>
-                {attendees.map((nickname, i) => (
-                  <View key={`${nickname}-${i}`} style={styles.attendeeChip}>
-                    <Text style={styles.attendeeChipText}>{nickname}</Text>
+                {attendees.map((a, i) => (
+                  <View key={`${a.nickname}-${i}`} style={styles.attendeeChip}>
+                    <Avatar url={a.avatarUrl} name={a.nickname} size={22} />
+                    <Text style={styles.attendeeChipText}>{a.nickname}</Text>
                   </View>
                 ))}
               </View>
@@ -196,9 +238,99 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
         ) : (
           <Text style={styles.lockNote}>랄잡부터 참석자 명단을 볼 수 있어요</Text>
         )}
+
+        <View style={styles.commentSection}>
+          <Text style={styles.attendeeTitle}>댓글 {comments.length > 0 ? comments.length : ''}</Text>
+          {comments.filter((c) => !c.parentId).map((comment) => {
+            const replies = comments.filter((c) => c.parentId === comment.id);
+            return (
+              <View key={comment.id}>
+                <CommentRow
+                  comment={comment}
+                  profile={profiles[comment.userId]}
+                  canDelete={comment.userId === user?.id || tier === 'admin' || Boolean(user?.isMaster)}
+                  onDelete={() => handleDeleteComment(comment.id)}
+                  onReply={() => setReplyTo(comment)}
+                />
+                {replies.map((reply) => (
+                  <View key={reply.id} style={styles.replyIndent}>
+                    <CommentRow
+                      comment={reply}
+                      profile={profiles[reply.userId]}
+                      canDelete={reply.userId === user?.id || tier === 'admin' || Boolean(user?.isMaster)}
+                      onDelete={() => handleDeleteComment(reply.id)}
+                    />
+                  </View>
+                ))}
+              </View>
+            );
+          })}
+          {replyTo && (
+            <View style={styles.replyBanner}>
+              <Text style={styles.replyBannerText}>
+                {profiles[replyTo.userId]?.nickname ?? '회원'}님에게 답글 작성 중
+              </Text>
+              <TouchableOpacity onPress={() => setReplyTo(null)}>
+                <Ionicons name="close" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+          )}
+          <View style={styles.commentInputRow}>
+            <TextInput
+              style={styles.commentInput}
+              value={commentInput}
+              onChangeText={setCommentInput}
+              placeholder={replyTo ? '답글 입력' : '댓글 입력'}
+            />
+            <TouchableOpacity style={styles.commentSendButton} onPress={handleAddComment}>
+              <Text style={styles.commentSendText}>등록</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
           </>
         )}
       </ScrollView>
+    </View>
+  );
+}
+
+function CommentRow({
+  comment,
+  profile,
+  canDelete,
+  onDelete,
+  onReply,
+}: {
+  comment: ScheduleComment;
+  profile?: Profile;
+  canDelete: boolean;
+  onDelete: () => void;
+  onReply?: () => void;
+}) {
+  return (
+    <View style={styles.commentRow}>
+      <Avatar url={profile?.avatarUrl} name={profile?.nickname ?? '회원'} size={28} />
+      <View style={styles.commentBody}>
+        <View style={styles.commentTop}>
+          <Text style={styles.commentNickname}>{profile?.nickname ?? '회원'}</Text>
+          <Text style={styles.commentTime}>
+            {new Date(comment.createdAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </View>
+        <Text style={styles.commentText}>{comment.body}</Text>
+        <View style={styles.commentActions}>
+          {onReply && (
+            <TouchableOpacity onPress={onReply}>
+              <Text style={styles.commentActionText}>답글</Text>
+            </TouchableOpacity>
+          )}
+          {canDelete && (
+            <TouchableOpacity onPress={onDelete}>
+              <Text style={styles.commentActionText}>삭제</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
     </View>
   );
 }
@@ -236,6 +368,22 @@ const styles = StyleSheet.create({
   attendeeTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
   attendeeEmpty: { fontSize: 13, color: colors.textMuted },
   attendeeList: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  attendeeChip: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 8 },
+  attendeeChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6 },
   attendeeChipText: { fontSize: 13, color: colors.text, fontWeight: '600' },
+  commentSection: { marginTop: spacing.xl },
+  commentRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  commentBody: { flex: 1 },
+  commentTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  commentNickname: { fontSize: 12, fontWeight: '700', color: colors.text },
+  commentTime: { fontSize: 10, color: colors.textMuted },
+  commentText: { fontSize: 13, color: colors.text, marginTop: 2 },
+  commentActions: { flexDirection: 'row', gap: spacing.md, marginTop: 4 },
+  commentActionText: { fontSize: 11, color: colors.textMuted },
+  replyIndent: { marginLeft: spacing.xxl },
+  replyBanner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.cream, borderRadius: radius.tile, paddingHorizontal: spacing.md, paddingVertical: 8, marginBottom: spacing.sm },
+  replyBannerText: { fontSize: 12, color: colors.creamText },
+  commentInputRow: { flexDirection: 'row', gap: spacing.sm },
+  commentInput: { flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 10, fontSize: 13 },
+  commentSendButton: { backgroundColor: colors.gold, borderRadius: radius.pill, paddingHorizontal: spacing.lg, justifyContent: 'center' },
+  commentSendText: { color: colors.white, fontWeight: '700', fontSize: 13 },
 });

@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing } from '../../theme/colors';
 import { AuthStackParamList } from '../../navigation/types';
 import { logIn } from '../../data/users';
 import { useAuth } from '../../context/AuthContext';
 import { ShuffledKeypad } from '../../components/ShuffledKeypad';
+import { authenticateBiometric, biometricAvailable, getSavedLogin, saveLogin } from '../../lib/savedLogin';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -16,6 +18,33 @@ export default function LoginScreen({ navigation }: Props) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [canBiometric, setCanBiometric] = useState(false);
+
+  useEffect(() => {
+    Promise.all([biometricAvailable(), getSavedLogin()]).then(([available, saved]) => {
+      setCanBiometric(available && Boolean(saved));
+    });
+  }, []);
+
+  const handleBiometricLogin = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const saved = await getSavedLogin();
+      if (!saved) {
+        setCanBiometric(false);
+        return;
+      }
+      if (!(await authenticateBiometric())) return;
+      await logIn(saved.identifier, saved.code);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const confirmIdentifier = () => {
     if (!identifier.trim()) return;
@@ -32,6 +61,7 @@ export default function LoginScreen({ navigation }: Props) {
       setError('');
       try {
         await logIn(identifier, next);
+        await saveLogin(identifier.trim(), next); // enables biometric quick login next time
         await refresh();
         // AuthGate (RootNavigator) swaps to MainTabNavigator once `user` is set.
       } catch (e) {
@@ -66,6 +96,13 @@ export default function LoginScreen({ navigation }: Props) {
           >
             <Text style={styles.nextButtonText}>다음</Text>
           </TouchableOpacity>
+          {canBiometric && (
+            <TouchableOpacity style={styles.biometricButton} onPress={handleBiometricLogin}>
+              <Ionicons name="finger-print" size={18} color={colors.goldLight} />
+              <Text style={styles.biometricText}>생체인증으로 로그인</Text>
+            </TouchableOpacity>
+          )}
+          {error && !confirmed ? <Text style={styles.error}>{error}</Text> : null}
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={styles.backLink}>돌아가기</Text>
           </TouchableOpacity>
@@ -115,6 +152,8 @@ const styles = StyleSheet.create({
   },
   nextButton: { backgroundColor: colors.gold, borderRadius: 999, paddingVertical: 14, paddingHorizontal: spacing.xxl, marginBottom: spacing.lg },
   nextButtonText: { color: colors.white, fontWeight: '700', fontSize: 15 },
+  biometricButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.lg },
+  biometricText: { color: colors.goldLight, fontSize: 14, fontWeight: '600' },
   backLink: { color: colors.goldLight, fontSize: 13 },
   dots: { flexDirection: 'row', gap: 16, marginBottom: spacing.md },
   dot: { width: 14, height: 14, borderRadius: 7, borderWidth: 1.5, borderColor: colors.gold },
