@@ -6,6 +6,7 @@
   "build": {
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
       "android": {
         "buildType": "apk"
       },
@@ -16,6 +17,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "channel": "production",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://hweqzqdipwtawydtekkl.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3ZXF6cWRpcHd0YXd5ZHRla2tsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1NjIyNjEsImV4cCI6MjA5MjEzODI2MX0.5S-mztcNgIWmhmosPaQroWUH0ED8oLwZTSsBjeZgwTg"

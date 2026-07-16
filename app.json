@@ -8,6 +8,12 @@
     "scheme": "agit-project",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c92e95e1-bd40-4f8e-b417-4dc4df58e496"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.agitproject.ledger"
@@ -44,6 +50,11 @@
           "icon": "./assets/icon.png"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c92e95e1-bd40-4f8e-b417-4dc4df58e496"
+      }
+    }
   }
 }
