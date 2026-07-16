@@ -45,7 +45,7 @@ export default function MyPageScreen({ navigation }: Props) {
       <View style={styles.profileCard}>
         <View style={styles.profileTop}>
           <Text style={styles.nickname}>{user.nickname}</Text>
-          <TierBadge tier={user.tier} />
+          <TierBadge tier={user.tier} isMaster={user.isMaster} />
         </View>
         <Text style={styles.crews}>{user.crews.map((c) => CREW_LABEL[c]).join(' · ') || '소속 크루 없음'}</Text>
         <View style={styles.statsRow}>

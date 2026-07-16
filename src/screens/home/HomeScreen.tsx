@@ -73,7 +73,7 @@ export default function HomeScreen({ navigation }: Props) {
       <View style={styles.greetingCard}>
         <View style={styles.greetingTop}>
           <Text style={styles.greetingText}>{user?.nickname ?? '게스트'}님, 안녕하세요</Text>
-          <TierBadge tier={tier} size="sm" />
+          <TierBadge tier={tier} size="sm" isMaster={user?.isMaster} />
         </View>
         {user?.crews?.length ? (
           <Text style={styles.crewTags}>{user.crews.map((c) => CREW_LABEL[c]).join(' · ')}</Text>

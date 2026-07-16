@@ -12,8 +12,11 @@ const TIER_STYLE: Record<Tier, { bg: string; text: string }> = {
   admin: { bg: '#191c22', text: colors.gold },
 };
 
-export function TierBadge({ tier, size = 'md' }: { tier: Tier; size?: 'sm' | 'md' }) {
-  const style = TIER_STYLE[tier] ?? TIER_STYLE.guest;
+const MASTER_STYLE = { bg: colors.danger, text: colors.white };
+
+export function TierBadge({ tier, size = 'md', isMaster = false }: { tier: Tier; size?: 'sm' | 'md'; isMaster?: boolean }) {
+  const style = isMaster ? MASTER_STYLE : TIER_STYLE[tier] ?? TIER_STYLE.guest;
+  const label = isMaster ? '마스터' : TIER_LABEL[tier];
   return (
     <View
       style={[
@@ -22,7 +25,7 @@ export function TierBadge({ tier, size = 'md' }: { tier: Tier; size?: 'sm' | 'md
         size === 'sm' && styles.badgeSm,
       ]}
     >
-      <Text style={[styles.text, { color: style.text }, size === 'sm' && styles.textSm]}>{TIER_LABEL[tier]}</Text>
+      <Text style={[styles.text, { color: style.text }, size === 'sm' && styles.textSm]}>{label}</Text>
     </View>
   );
 }

@@ -160,7 +160,7 @@ export default function MembersScreen({ navigation }: Props) {
                 </View>
                 <Text style={styles.memberMeta}>{m.crews.map((c) => CREW_LABEL[c]).join(', ')} · 이달 {m.monthlyAttendance}회 출석</Text>
               </View>
-              <TierBadge tier={m.tier} size="sm" />
+              <TierBadge tier={m.tier} size="sm" isMaster={m.isMaster} />
             </TouchableOpacity>
           ))}
         </View>
