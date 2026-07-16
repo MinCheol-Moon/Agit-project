@@ -248,10 +248,10 @@ create view member_directory as
   select id, nickname, crews, tier, is_master, status, monthly_attendance, total_attendance, created_at
   from users;
 
-grant select on member_directory to authenticated, anon;
+grant select on member_directory to authenticated;
 
 -- schedules: view >= 0 (guest), create >= 3 (taljuninja)
-create policy schedules_select on schedules for select using (true);
+create policy schedules_select on schedules for select using (current_tier_rank() >= 1);
 create policy schedules_insert on schedules for insert with check (current_tier_rank() >= 3);
 create policy schedules_update_own on schedules for update using (created_by = auth.uid() or is_akatsuki());
 create policy schedules_delete_own_or_admin on schedules for delete using (created_by = auth.uid() or is_akatsuki());
@@ -266,7 +266,7 @@ create policy attendances_select on attendances for select using (current_tier_r
 create policy attendances_insert on attendances for insert with check (user_id = auth.uid() and current_tier_rank() >= 1);
 
 -- dues_ledger: expenses visible to all, income/balance detail requires rank >= 2, write requires rank >= 4
-create policy dues_ledger_select_expense on dues_ledger for select using (type = 'expense' or current_tier_rank() >= 2);
+create policy dues_ledger_select_expense on dues_ledger for select using ((type = 'expense' and current_tier_rank() >= 1) or current_tier_rank() >= 2);
 create policy dues_ledger_insert on dues_ledger for insert with check (is_akatsuki());
 create policy dues_ledger_update on dues_ledger for update using (is_akatsuki());
 
@@ -313,7 +313,7 @@ create policy real_name_logs_insert on real_name_view_logs for insert with check
 create policy attendance_month_select on attendance_month for select using (user_id = auth.uid() or current_tier_rank() >= 3);
 
 -- notices: visible to everyone, written/deleted by admin/master only
-create policy notices_select on notices for select using (true);
+create policy notices_select on notices for select using (current_tier_rank() >= 1);
 create policy notices_insert on notices for insert with check (is_akatsuki());
 create policy notices_update on notices for update using (is_akatsuki());
 create policy notices_delete on notices for delete using (is_akatsuki());
