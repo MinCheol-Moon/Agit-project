@@ -13,7 +13,7 @@ const TIER_STYLE: Record<Tier, { bg: string; text: string }> = {
 };
 
 export function TierBadge({ tier, size = 'md' }: { tier: Tier; size?: 'sm' | 'md' }) {
-  const style = TIER_STYLE[tier];
+  const style = TIER_STYLE[tier] ?? TIER_STYLE.guest;
   return (
     <View
       style={[
