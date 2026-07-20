@@ -5,7 +5,15 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { ChatStackParamList } from '../../navigation/types';
-import { deleteDirectMessage, listDirectMessages, sendDirectMessage, subscribeToDirectMessages } from '../../data/dm';
+import {
+  deleteDirectMessage,
+  getPeerLastRead,
+  listDirectMessages,
+  markDmRead,
+  sendDirectMessage,
+  subscribeToDirectMessages,
+  subscribeToDmReads,
+} from '../../data/dm';
 import { DirectMessage } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { ScreenHeader } from '../../components/ScreenHeader';
@@ -20,6 +28,9 @@ export default function DmRoomScreen({ route, navigation }: Props) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [input, setInput] = useState('');
+  // The moment the other person last read our conversation; a sent message
+  // newer than this is still unread (shows a "1").
+  const [peerLastRead, setPeerLastRead] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const viewport = useWebViewportRect();
@@ -33,9 +44,15 @@ export default function DmRoomScreen({ route, navigation }: Props) {
     return () => cancelAnimationFrame(id);
   }, [messages.length, webHeight]);
 
+  const refetchPeerRead = useCallback(() => {
+    getPeerLastRead(otherUserId).then(setPeerLastRead).catch(() => {});
+  }, [otherUserId]);
+
   const load = useCallback(async () => {
     setMessages(await listDirectMessages(otherUserId));
-  }, [otherUserId]);
+    markDmRead(otherUserId).catch(() => {});
+    refetchPeerRead();
+  }, [otherUserId, refetchPeerRead]);
 
   useFocusEffect(
     useCallback(() => {
@@ -50,13 +67,20 @@ export default function DmRoomScreen({ route, navigation }: Props) {
       user.id,
       (message) => {
         setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+        markDmRead(otherUserId).catch(() => {});
       },
       (messageId) => {
         setMessages((prev) => prev.filter((m) => m.id !== messageId));
       },
     );
-    return unsubscribe;
-  }, [otherUserId, user]);
+    const unsubscribeReads = subscribeToDmReads(otherUserId, refetchPeerRead);
+    const poll = setInterval(refetchPeerRead, 6000);
+    return () => {
+      unsubscribe();
+      unsubscribeReads();
+      clearInterval(poll);
+    };
+  }, [otherUserId, user, refetchPeerRead]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -96,6 +120,8 @@ export default function DmRoomScreen({ route, navigation }: Props) {
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
         renderItem={({ item }) => {
           const mine = item.senderId === user?.id;
+          // My message is unread until the other person's last-read passes it.
+          const unread = mine && (!peerLastRead || new Date(peerLastRead).getTime() < new Date(item.createdAt).getTime());
           return (
             <View style={[styles.bubbleRow, mine && styles.bubbleRowMine]}>
               <View style={[styles.bubbleWithAction, mine && styles.bubbleWithActionMine]}>
@@ -111,6 +137,7 @@ export default function DmRoomScreen({ route, navigation }: Props) {
                 >
                   <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextOther}>{item.body}</Text>
                 </TouchableOpacity>
+                {unread ? <Text style={styles.unreadCount}>1</Text> : null}
               </View>
             </View>
           );
@@ -143,6 +170,7 @@ const styles = StyleSheet.create({
   bubbleWithAction: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '80%' },
   bubbleWithActionMine: { flexDirection: 'row-reverse' },
   deleteIcon: { padding: 4 },
+  unreadCount: { alignSelf: 'flex-end', fontSize: 11, fontWeight: '700', color: colors.gold, marginBottom: 2 },
   bubble: { flexShrink: 1, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.tile },
   bubbleMine: { backgroundColor: colors.goldLight },
   bubbleOther: { backgroundColor: colors.white },

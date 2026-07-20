@@ -176,13 +176,17 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
             );
           }
           const profile = profiles[item.userId];
+          const unreadOther = unreadFor(item.createdAt);
           return (
             <View style={styles.otherRow}>
               <Avatar url={profile?.avatarUrl} name={profile?.nickname ?? '회원'} size={34} />
               <View style={styles.otherContent}>
                 <Text style={styles.nickname}>{profile?.nickname ?? '회원'}</Text>
-                <View style={[styles.bubble, styles.bubbleOther, styles.bubbleOtherAlign]}>
-                  <Text style={styles.bubbleTextOther}>{item.body}</Text>
+                <View style={styles.otherBubbleRow}>
+                  <View style={[styles.bubble, styles.bubbleOther, styles.bubbleOtherAlign]}>
+                    <Text style={styles.bubbleTextOther}>{item.body}</Text>
+                  </View>
+                  {unreadOther > 0 && <Text style={styles.unreadCount}>{unreadOther}</Text>}
                 </View>
               </View>
             </View>
@@ -215,6 +219,7 @@ const styles = StyleSheet.create({
   bubbleRowMine: { alignItems: 'flex-end' },
   otherRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs, paddingRight: spacing.xl },
   otherContent: { flexShrink: 1 },
+  otherBubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
   nickname: { fontSize: 11, color: colors.textMuted, marginBottom: 2, marginLeft: 4 },
   // ponytail: maxWidth must live on the outer row-constrained wrapper - a
   // percentage on the auto-sized bubble referenced its own auto width and

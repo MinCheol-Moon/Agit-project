@@ -727,3 +727,24 @@ create policy room_reads_update on public.room_reads
   for update using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 alter publication supabase_realtime add table public.room_reads;
+
+-- ---------------------------------------------------------------------------
+-- Direct-message read receipts (see migration 0022).
+-- ---------------------------------------------------------------------------
+create table if not exists public.dm_reads (
+  reader_id uuid not null references public.users(id) on delete cascade,
+  peer_id uuid not null references public.users(id) on delete cascade,
+  last_read_at timestamptz not null default now(),
+  primary key (reader_id, peer_id)
+);
+alter table public.dm_reads enable row level security;
+drop policy if exists dm_reads_select on public.dm_reads;
+create policy dm_reads_select on public.dm_reads
+  for select using (reader_id = auth.uid() or peer_id = auth.uid());
+drop policy if exists dm_reads_insert on public.dm_reads;
+create policy dm_reads_insert on public.dm_reads
+  for insert with check (reader_id = auth.uid());
+drop policy if exists dm_reads_update on public.dm_reads;
+create policy dm_reads_update on public.dm_reads
+  for update using (reader_id = auth.uid()) with check (reader_id = auth.uid());
+alter publication supabase_realtime add table public.dm_reads;

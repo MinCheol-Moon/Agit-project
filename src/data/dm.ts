@@ -86,6 +86,48 @@ export function subscribeToDirectMessages(
   return () => {};
 }
 
+// Records that I've read the conversation with `otherUserId` up to now.
+export async function markDmRead(otherUserId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const me = await getAuthUserId();
+    await supabase
+      .from('dm_reads')
+      .upsert({ reader_id: me, peer_id: otherUserId, last_read_at: new Date().toISOString() }, { onConflict: 'reader_id,peer_id' });
+    return;
+  }
+}
+
+// When the other person last read messages from me - so I can mark my sent
+// messages read once this passes their timestamp. null = they never opened it.
+export async function getPeerLastRead(otherUserId: string): Promise<string | null> {
+  if (isSupabaseConfigured && supabase) {
+    const me = await getAuthUserId();
+    const { data, error } = await supabase
+      .from('dm_reads')
+      .select('last_read_at')
+      .eq('reader_id', otherUserId)
+      .eq('peer_id', me)
+      .maybeSingle();
+    if (error) return null;
+    return (data?.last_read_at as string) ?? null;
+  }
+  return null;
+}
+
+export function subscribeToDmReads(otherUserId: string, onChange: () => void) {
+  const client = supabase;
+  if (isSupabaseConfigured && client) {
+    const channel = client
+      .channel(`dm-reads-${otherUserId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dm_reads' }, () => onChange())
+      .subscribe();
+    return () => {
+      client.removeChannel(channel);
+    };
+  }
+  return () => {};
+}
+
 export async function listDmPreviews(): Promise<Map<string, DirectMessage>> {
   if (isSupabaseConfigured && supabase) {
     const me = await getAuthUserId();
