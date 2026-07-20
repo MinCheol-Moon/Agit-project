@@ -56,7 +56,12 @@ export default function RootNavigator() {
   if (!ready) return null;
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      // On web, React Navigation otherwise rewrites document.title to the
+      // active route name (e.g. "Ledger"), which iOS then picks up as the
+      // "Add to Home Screen" name. Pin it to the disguise name instead.
+      documentTitle={{ formatter: () => '가계부' }}
+    >
       {unlocked ? (
         <AuthProvider>
           <AuthGate />
