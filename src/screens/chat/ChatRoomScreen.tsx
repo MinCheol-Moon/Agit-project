@@ -37,6 +37,7 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
   const [reads, setReads] = useState<RoomRead[]>([]);
   const [memberCount, setMemberCount] = useState(0);
   const listRef = useRef<FlatList>(null);
+  const inputRef = useRef<TextInput>(null);
   const webHeight = useWebViewportHeight();
 
   const refetchReads = useCallback(() => {
@@ -71,11 +72,24 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
       },
     );
     const unsubscribeReads = subscribeToRoomReads(roomId, refetchReads);
+    // Realtime only reliably fires for a member's FIRST read (an INSERT); a
+    // re-read is an UPDATE that filtered subscriptions can miss. Poll as a
+    // fallback so the unread count always converges.
+    const poll = setInterval(refetchReads, 6000);
     return () => {
       unsubscribe();
       unsubscribeReads();
+      clearInterval(poll);
     };
   }, [roomId, refetchReads]);
+
+  // Keep the view pinned to the newest message whenever the list grows or the
+  // visible height changes (keyboard open/close), so sending never leaves the
+  // list scrolled up above the latest message.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: false }));
+    return () => cancelAnimationFrame(id);
+  }, [messages.length, webHeight]);
 
   // Number of members who haven't yet read a message posted at `createdAt`.
   const unreadFor = useCallback(
@@ -92,6 +106,9 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
     if (!input.trim()) return;
     const body = input.trim();
     setInput('');
+    // Keep focus so the keyboard stays open (like KakaoTalk); losing it makes
+    // the viewport resize and the list jump.
+    inputRef.current?.focus();
     try {
       const message = await sendMessage(roomId, body);
       setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
@@ -122,7 +139,7 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
         data={messages}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
         renderItem={({ item }) => {
           if (item.userId === null) {
             return (
@@ -167,7 +184,16 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
         }}
       />
       <View style={styles.inputRow}>
-        <TextInput style={styles.input} value={input} onChangeText={setInput} placeholder="메시지 입력" />
+        <TextInput
+          ref={inputRef}
+          style={styles.input}
+          value={input}
+          onChangeText={setInput}
+          placeholder="메시지 입력"
+          onSubmitEditing={handleSend}
+          blurOnSubmit={false}
+          returnKeyType="send"
+        />
         <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
           <Text style={styles.sendButtonText}>전송</Text>
         </TouchableOpacity>

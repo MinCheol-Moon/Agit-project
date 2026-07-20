@@ -21,7 +21,13 @@ export default function DmRoomScreen({ route, navigation }: Props) {
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [input, setInput] = useState('');
   const listRef = useRef<FlatList>(null);
+  const inputRef = useRef<TextInput>(null);
   const webHeight = useWebViewportHeight();
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: false }));
+    return () => cancelAnimationFrame(id);
+  }, [messages.length, webHeight]);
 
   const load = useCallback(async () => {
     setMessages(await listDirectMessages(otherUserId));
@@ -52,6 +58,7 @@ export default function DmRoomScreen({ route, navigation }: Props) {
     if (!input.trim()) return;
     const body = input.trim();
     setInput('');
+    inputRef.current?.focus();
     try {
       const message = await sendDirectMessage(otherUserId, body);
       setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
@@ -82,7 +89,7 @@ export default function DmRoomScreen({ route, navigation }: Props) {
         data={messages}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
         renderItem={({ item }) => {
           const mine = item.senderId === user?.id;
           return (
@@ -106,7 +113,16 @@ export default function DmRoomScreen({ route, navigation }: Props) {
         }}
       />
       <View style={styles.inputRow}>
-        <TextInput style={styles.input} value={input} onChangeText={setInput} placeholder="메시지 입력" />
+        <TextInput
+          ref={inputRef}
+          style={styles.input}
+          value={input}
+          onChangeText={setInput}
+          placeholder="메시지 입력"
+          onSubmitEditing={handleSend}
+          blurOnSubmit={false}
+          returnKeyType="send"
+        />
         <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
           <Text style={styles.sendButtonText}>전송</Text>
         </TouchableOpacity>
