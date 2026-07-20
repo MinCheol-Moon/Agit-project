@@ -80,6 +80,53 @@ export async function deleteMessage(messageId: string): Promise<void> {
   if (idx >= 0) mockMessages.splice(idx, 1);
 }
 
+export interface RoomRead {
+  userId: string;
+  lastReadAt: string;
+}
+
+// Records that the current user has read everything in the room up to now.
+// Called when entering a room and whenever new messages arrive.
+export async function markRoomRead(roomId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const userId = await getAuthUserId();
+    await supabase
+      .from('room_reads')
+      .upsert({ room_id: roomId, user_id: userId, last_read_at: new Date().toISOString() }, { onConflict: 'room_id,user_id' });
+    return;
+  }
+  // mock mode: nothing to persist
+}
+
+export async function listRoomReads(roomId: string): Promise<RoomRead[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('room_reads').select('user_id, last_read_at').eq('room_id', roomId);
+    if (error) throw error;
+    return camelizeDeep<RoomRead[]>(data ?? []);
+  }
+  return [];
+}
+
+// Fires whenever anyone's read marker in the room changes, so the sender's
+// unread counts update live.
+export function subscribeToRoomReads(roomId: string, onChange: () => void) {
+  const client = supabase;
+  if (isSupabaseConfigured && client) {
+    const channel = client
+      .channel(`reads-${roomId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'room_reads', filter: `room_id=eq.${roomId}` },
+        () => onChange(),
+      )
+      .subscribe();
+    return () => {
+      client.removeChannel(channel);
+    };
+  }
+  return () => {};
+}
+
 export function subscribeToRoom(
   roomId: string,
   onInsert: (message: ChatMessage) => void,

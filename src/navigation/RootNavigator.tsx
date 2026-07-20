@@ -37,20 +37,48 @@ export default function RootNavigator() {
   const backgroundedAt = useRef<number | null>(null);
 
   useEffect(() => {
-    if (Platform.OS === 'web') return; // browsers don't background the same way
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'background') {
-        backgroundedAt.current = Date.now();
-      } else if (state === 'active' && backgroundedAt.current) {
-        const away = Date.now() - backgroundedAt.current;
-        backgroundedAt.current = null;
-        if (away >= AUTO_LOGOUT_MS) {
-          signOut().catch(() => {});
-          lock();
+    if (Platform.OS !== 'web') {
+      const sub = AppState.addEventListener('change', (state) => {
+        if (state === 'background') {
+          backgroundedAt.current = Date.now();
+        } else if (state === 'active' && backgroundedAt.current) {
+          const away = Date.now() - backgroundedAt.current;
+          backgroundedAt.current = null;
+          if (away >= AUTO_LOGOUT_MS) {
+            signOut().catch(() => {});
+            lock();
+          }
         }
+      });
+      return () => sub.remove();
+    }
+
+    // Web: there's no real "background", so log out after a stretch of
+    // inactivity instead. Any interaction resets the clock; a timer (and the
+    // tab regaining focus) checks whether the idle window has elapsed.
+    let lastActive = Date.now();
+    const bump = () => {
+      lastActive = Date.now();
+    };
+    const checkIdle = () => {
+      if (Date.now() - lastActive >= AUTO_LOGOUT_MS) {
+        signOut().catch(() => {});
+        lock();
       }
-    });
-    return () => sub.remove();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') checkIdle();
+      else bump();
+    };
+    const events: (keyof WindowEventMap)[] = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
+    events.forEach((e) => window.addEventListener(e, bump, { passive: true }));
+    document.addEventListener('visibilitychange', onVisible);
+    const interval = setInterval(checkIdle, 30 * 1000);
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, bump));
+      document.removeEventListener('visibilitychange', onVisible);
+      clearInterval(interval);
+    };
   }, [lock]);
 
   if (!ready) return null;

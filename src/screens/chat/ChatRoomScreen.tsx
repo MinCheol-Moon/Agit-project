@@ -5,7 +5,16 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { ChatStackParamList } from '../../navigation/types';
-import { deleteMessage, listMessages, sendMessage, subscribeToRoom } from '../../data/chat';
+import {
+  deleteMessage,
+  listMessages,
+  listRoomReads,
+  markRoomRead,
+  sendMessage,
+  subscribeToRoom,
+  subscribeToRoomReads,
+  RoomRead,
+} from '../../data/chat';
 import { ChatMessage } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { listMembers } from '../../data/users';
@@ -23,14 +32,25 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [profiles, setProfiles] = useState<Record<string, { nickname: string; avatarUrl?: string | null }>>({});
   const [input, setInput] = useState('');
+  // Read receipts: how many members have read up to each message. memberCount
+  // is the group size (incl. me); reads holds every member's last-read time.
+  const [reads, setReads] = useState<RoomRead[]>([]);
+  const [memberCount, setMemberCount] = useState(0);
   const listRef = useRef<FlatList>(null);
   const webHeight = useWebViewportHeight();
 
-  const load = useCallback(async () => {
-    const [msgs, members] = await Promise.all([listMessages(roomId), listMembers()]);
-    setMessages(msgs);
-    setProfiles(Object.fromEntries(members.map((m) => [m.id, { nickname: m.nickname, avatarUrl: m.avatarUrl }])));
+  const refetchReads = useCallback(() => {
+    listRoomReads(roomId).then(setReads).catch(() => {});
   }, [roomId]);
+
+  const load = useCallback(async () => {
+    const [msgs, members, readRows] = await Promise.all([listMessages(roomId), listMembers(), listRoomReads(roomId)]);
+    setMessages(msgs);
+    setMemberCount(members.length);
+    setReads(readRows);
+    setProfiles(Object.fromEntries(members.map((m) => [m.id, { nickname: m.nickname, avatarUrl: m.avatarUrl }])));
+    markRoomRead(roomId).then(refetchReads).catch(() => {});
+  }, [roomId, refetchReads]);
 
   useFocusEffect(
     useCallback(() => {
@@ -43,13 +63,30 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
       roomId,
       (message) => {
         setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+        // Seeing a new message means I've read up to it; advance my marker.
+        markRoomRead(roomId).then(refetchReads).catch(() => {});
       },
       (messageId) => {
         setMessages((prev) => prev.filter((m) => m.id !== messageId));
       },
     );
-    return unsubscribe;
-  }, [roomId]);
+    const unsubscribeReads = subscribeToRoomReads(roomId, refetchReads);
+    return () => {
+      unsubscribe();
+      unsubscribeReads();
+    };
+  }, [roomId, refetchReads]);
+
+  // Number of members who haven't yet read a message posted at `createdAt`.
+  const unreadFor = useCallback(
+    (createdAt: string): number => {
+      if (!user) return 0;
+      const posted = new Date(createdAt).getTime();
+      const readByOthers = reads.filter((r) => r.userId !== user.id && new Date(r.lastReadAt).getTime() >= posted).length;
+      return Math.max(0, memberCount - 1 - readByOthers);
+    },
+    [reads, memberCount, user],
+  );
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -96,6 +133,7 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
           }
           const mine = item.userId === user?.id;
           if (mine) {
+            const unread = unreadFor(item.createdAt);
             return (
               <View style={[styles.bubbleRow, styles.bubbleRowMine]}>
                 <View style={[styles.bubbleWithAction, styles.bubbleWithActionMine]}>
@@ -109,6 +147,7 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
                   >
                     <Text style={styles.bubbleTextMine}>{item.body}</Text>
                   </TouchableOpacity>
+                  {unread > 0 && <Text style={styles.unreadCount}>{unread}</Text>}
                 </View>
               </View>
             );
@@ -151,6 +190,8 @@ const styles = StyleSheet.create({
   bubbleWithAction: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '80%' },
   bubbleWithActionMine: { flexDirection: 'row-reverse' },
   deleteIcon: { padding: 4 },
+  // KakaoTalk-style unread number sitting just outside my bubble.
+  unreadCount: { alignSelf: 'flex-end', fontSize: 11, fontWeight: '700', color: colors.gold, marginBottom: 2 },
   systemRow: { alignItems: 'center', marginBottom: spacing.xs },
   systemText: { fontSize: 12, color: colors.creamText, backgroundColor: colors.cream, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6, overflow: 'hidden' },
   bubble: { flexShrink: 1, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.tile },

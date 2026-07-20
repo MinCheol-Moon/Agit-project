@@ -48,10 +48,18 @@ const tags = [
 ].join('');
 
 let html = fs.readFileSync(htmlPath, 'utf8');
+
+// 4. Harden the viewport meta. Expo emits a plain viewport; on iOS Safari
+//    focusing an input with font-size < 16px auto-zooms the whole page (which
+//    then clips the UI), and env(safe-area-inset-*) only resolves when
+//    viewport-fit=cover is set. maximum-scale=1 + user-scalable=no stops the
+//    zoom; viewport-fit=cover lets the tab bar pad past the home indicator.
+const VIEWPORT =
+  '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>';
+html = html.replace(/<meta name="viewport"[^>]*>/, VIEWPORT);
+
 if (!html.includes('apple-touch-icon')) {
   html = html.replace('</head>', tags + '</head>');
-  fs.writeFileSync(htmlPath, html);
-  console.log('postexport-web: injected home-screen icon + PWA head tags');
-} else {
-  console.log('postexport-web: head tags already present, skipped');
 }
+fs.writeFileSync(htmlPath, html);
+console.log('postexport-web: injected home-screen icon + PWA head tags + hardened viewport');

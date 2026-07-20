@@ -696,3 +696,32 @@ create trigger direct_messages_push_notify
 --   where nickname = '여기에_본인_닉네임';
 -- ---------------------------------------------------------------------------
 
+
+-- ---------------------------------------------------------------------------
+-- Group-chat read receipts (see migration 0020). Powers the KakaoTalk-style
+-- "unread by N" count next to each message.
+-- ---------------------------------------------------------------------------
+create table if not exists public.room_reads (
+  room_id uuid not null references public.chat_rooms(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  last_read_at timestamptz not null default now(),
+  primary key (room_id, user_id)
+);
+
+alter table public.room_reads enable row level security;
+
+drop policy if exists room_reads_select on public.room_reads;
+create policy room_reads_select on public.room_reads
+  for select using (
+    exists (select 1 from public.users u where u.id = auth.uid() and u.status = 'active')
+  );
+
+drop policy if exists room_reads_insert on public.room_reads;
+create policy room_reads_insert on public.room_reads
+  for insert with check (user_id = auth.uid());
+
+drop policy if exists room_reads_update on public.room_reads;
+create policy room_reads_update on public.room_reads
+  for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+alter publication supabase_realtime add table public.room_reads;
