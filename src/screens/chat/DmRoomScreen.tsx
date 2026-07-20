@@ -17,6 +17,7 @@ import {
 import { DirectMessage } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { SendButton } from '../../components/SendButton';
 import { confirmDestructive } from '../../lib/confirm';
 import { alert } from '../../lib/alert';
 import { useWebViewportRect } from '../../lib/useKeyboardInset';
@@ -154,9 +155,7 @@ export default function DmRoomScreen({ route, navigation }: Props) {
           blurOnSubmit={false}
           returnKeyType="send"
         />
-        <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-          <Text style={styles.sendButtonText}>전송</Text>
-        </TouchableOpacity>
+        <SendButton onPress={handleSend} />
       </View>
     </KeyboardAvoidingView>
   );
