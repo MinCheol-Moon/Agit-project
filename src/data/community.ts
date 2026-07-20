@@ -139,12 +139,36 @@ export async function uploadPostImage(fileUri: string): Promise<string> {
   return fileUri;
 }
 
-export async function likePost(postId: string): Promise<void> {
+// Whether the current user has liked this post (to show a filled vs empty heart).
+export async function hasLikedPost(postId: string): Promise<boolean> {
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.from('post_likes').insert({ post_id: postId, user_id: await getAuthUserId() });
+    const userId = await getAuthUserId();
+    const { data } = await supabase.from('post_likes').select('id').eq('post_id', postId).eq('user_id', userId).maybeSingle();
+    return Boolean(data);
+  }
+  return false;
+}
+
+// Likes/unlikes a post; returns the new liked state.
+export async function toggleLike(postId: string): Promise<boolean> {
+  if (isSupabaseConfigured && supabase) {
+    const userId = await getAuthUserId();
+    const { data: existing } = await supabase
+      .from('post_likes')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (existing) {
+      const { error } = await supabase.from('post_likes').delete().eq('id', existing.id);
+      if (error) throw error;
+      return false;
+    }
+    const { error } = await supabase.from('post_likes').insert({ post_id: postId, user_id: userId });
     if (error) throw error;
-    return;
+    return true;
   }
   const post = mockPosts.find((p) => p.id === postId);
   if (post) post.likeCount += 1;
+  return true;
 }

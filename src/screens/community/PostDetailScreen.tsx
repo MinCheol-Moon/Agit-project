@@ -5,7 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { CommunityStackParamList } from '../../navigation/types';
-import { addComment, deleteComment, deletePost, likePost, listComments, listPosts, updatePost } from '../../data/community';
+import { addComment, deleteComment, deletePost, hasLikedPost, listComments, listPosts, toggleLike, updatePost } from '../../data/community';
 import { listMembers } from '../../data/users';
 import { Post, PostComment } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -29,14 +29,16 @@ export default function PostDetailScreen({ route, navigation }: Props) {
   const [comments, setComments] = useState<PostComment[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [commentInput, setCommentInput] = useState('');
+  const [liked, setLiked] = useState(false);
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
 
   const load = useCallback(async () => {
-    const [posts, cmts, members] = await Promise.all([listPosts(), listComments(postId), listMembers()]);
+    const [posts, cmts, members, mine] = await Promise.all([listPosts(), listComments(postId), listMembers(), hasLikedPost(postId)]);
     setPost(posts.find((p) => p.id === postId) ?? null);
     setComments(cmts);
+    setLiked(mine);
     setProfiles(Object.fromEntries(members.map((m) => [m.id, { nickname: m.nickname, avatarUrl: m.avatarUrl }])));
   }, [postId]);
 
@@ -52,10 +54,17 @@ export default function PostDetailScreen({ route, navigation }: Props) {
   const authorProfile = profiles[post.userId];
 
   const handleLike = async () => {
+    // Optimistic toggle so the heart responds instantly; reconcile from server.
+    const nextLiked = !liked;
+    setLiked(nextLiked);
+    setPost((prev) => (prev ? { ...prev, likeCount: Math.max(0, prev.likeCount + (nextLiked ? 1 : -1)) } : prev));
     try {
-      await likePost(postId);
+      const serverLiked = await toggleLike(postId);
+      setLiked(serverLiked);
       load();
     } catch (e) {
+      setLiked(!nextLiked);
+      setPost((prev) => (prev ? { ...prev, likeCount: Math.max(0, prev.likeCount + (nextLiked ? -1 : 1)) } : prev));
       alert('좋아요 실패', e instanceof Error ? e.message : String(e));
     }
   };
@@ -155,8 +164,8 @@ export default function PostDetailScreen({ route, navigation }: Props) {
             <Text style={styles.title}>{post.title}</Text>
             <Text style={styles.body}>{post.body}</Text>
             {post.imageUrl ? <Image source={{ uri: post.imageUrl }} style={styles.postImage} resizeMode="cover" /> : null}
-            <TouchableOpacity style={styles.likeButton} onPress={handleLike}>
-              <Ionicons name="heart" size={16} color={colors.danger} />
+            <TouchableOpacity style={[styles.likeButton, liked && styles.likeButtonActive]} onPress={handleLike}>
+              <Ionicons name={liked ? 'heart' : 'heart-outline'} size={16} color={colors.danger} />
               <Text style={styles.likeText}>{post.likeCount}</Text>
             </TouchableOpacity>
 
@@ -215,6 +224,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 15, color: colors.text, lineHeight: 22, marginBottom: spacing.md },
   postImage: { width: '100%', height: 240, borderRadius: radius.tile, backgroundColor: colors.line, marginBottom: spacing.lg },
   likeButton: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, paddingHorizontal: spacing.lg, paddingVertical: 10 },
+  likeButtonActive: { borderColor: colors.danger, backgroundColor: '#fdecec' },
   likeText: { fontWeight: '700', color: colors.text },
   titleInput: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radius.tile, padding: spacing.md, fontSize: 15, fontWeight: '700', marginBottom: spacing.md, color: colors.text },
   bodyInput: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radius.tile, padding: spacing.md, fontSize: 14, minHeight: 160, textAlignVertical: 'top', color: colors.text },
