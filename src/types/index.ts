@@ -139,6 +139,14 @@ export interface DirectMessage {
   createdAt: string;
 }
 
+export interface PostComment {
+  id: string;
+  postId: string;
+  userId: string;
+  body: string;
+  createdAt: string;
+}
+
 export interface VoteOption {
   id: string;
   voteId: string;

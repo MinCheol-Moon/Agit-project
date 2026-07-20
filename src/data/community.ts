@@ -1,7 +1,7 @@
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { getAuthUserId } from '../lib/session';
 import { camelizeDeep } from '../lib/caseMap';
-import { Crew, Post } from '../types';
+import { Crew, Post, PostComment } from '../types';
 import { CURRENT_USER_ID, mockPosts } from './mockStore';
 
 function countByKey(rows: { [key: string]: unknown }[] | null, key: string): Map<string, number> {
@@ -93,6 +93,50 @@ export async function deletePost(postId: string): Promise<void> {
   }
   const idx = mockPosts.findIndex((p) => p.id === postId);
   if (idx >= 0) mockPosts.splice(idx, 1);
+}
+
+export async function listComments(postId: string): Promise<PostComment[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('comments').select('*').eq('post_id', postId).order('created_at');
+    if (error) throw error;
+    return camelizeDeep<PostComment[]>(data ?? []);
+  }
+  return [];
+}
+
+export async function addComment(postId: string, body: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { error } = await supabase.from('comments').insert({ post_id: postId, user_id: await getAuthUserId(), body });
+    if (error) throw error;
+    return;
+  }
+}
+
+export async function deleteComment(commentId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('comments').delete().eq('id', commentId).select('id');
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error('삭제 권한이 없어요.');
+    return;
+  }
+}
+
+// Uploads a photo to the public post-images bucket and returns its URL.
+export async function uploadPostImage(fileUri: string): Promise<string> {
+  if (isSupabaseConfigured && supabase) {
+    const userId = (await supabase.auth.getUser()).data.user?.id;
+    if (!userId) throw new Error('로그인이 필요합니다.');
+    const path = `${userId}/${Date.now()}.jpg`;
+    const response = await fetch(fileUri);
+    const blob = await response.blob();
+    const { error: uploadError } = await supabase.storage
+      .from('post-images')
+      .upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
+    if (uploadError) throw uploadError;
+    const { data } = supabase.storage.from('post-images').getPublicUrl(path);
+    return data.publicUrl;
+  }
+  return fileUri;
 }
 
 export async function likePost(postId: string): Promise<void> {
