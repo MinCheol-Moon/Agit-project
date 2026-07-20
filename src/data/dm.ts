@@ -4,24 +4,32 @@ import { camelizeDeep } from '../lib/caseMap';
 import { DirectMessage } from '../types';
 import { CURRENT_USER_ID, mockDirectMessages } from './mockStore';
 
-export async function listDirectMessages(otherUserId: string): Promise<DirectMessage[]> {
+export const DM_PAGE_SIZE = 50;
+
+// Newest-first (for an inverted FlatList). Pass `before` to page older messages.
+export async function listDirectMessages(otherUserId: string, before?: string): Promise<DirectMessage[]> {
   if (isSupabaseConfigured && supabase) {
     const me = await getAuthUserId();
-    const { data, error } = await supabase
+    let query = supabase
       .from('direct_messages')
       .select('*')
       .or(`and(sender_id.eq.${me},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${me})`)
-      .order('created_at');
+      .order('created_at', { ascending: false })
+      .limit(DM_PAGE_SIZE);
+    if (before) query = query.lt('created_at', before);
+    const { data, error } = await query;
     if (error) throw error;
     return camelizeDeep<DirectMessage[]>(data ?? []);
   }
-  return mockDirectMessages
+  let list = mockDirectMessages
     .filter(
       (m) =>
         (m.senderId === CURRENT_USER_ID && m.recipientId === otherUserId) ||
         (m.senderId === otherUserId && m.recipientId === CURRENT_USER_ID),
     )
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  if (before) list = list.filter((m) => m.createdAt < before);
+  return list.slice(0, DM_PAGE_SIZE);
 }
 
 export async function sendDirectMessage(recipientId: string, body: string): Promise<DirectMessage> {

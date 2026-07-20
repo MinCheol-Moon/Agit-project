@@ -129,6 +129,9 @@ export interface ChatMessage {
   userId: string | null;
   body: string;
   createdAt: string;
+  // Client-only: optimistic send state (not persisted).
+  pending?: boolean;
+  failed?: boolean;
 }
 
 export interface DirectMessage {
@@ -137,6 +140,9 @@ export interface DirectMessage {
   recipientId: string;
   body: string;
   createdAt: string;
+  // Client-only: optimistic send state (not persisted).
+  pending?: boolean;
+  failed?: boolean;
 }
 
 export interface PostComment {
