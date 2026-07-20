@@ -1,11 +1,11 @@
 import React, { useCallback, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { HomeStackParamList } from '../../navigation/types';
-import { approveMember, deleteMember, getRealName, listMembers, listPendingMembers, rejectMember, setMemberTier } from '../../data/users';
+import { approveMember, deleteMember, getMemberFull, getRealName, listMembers, listPendingMembers, rejectMember, setMemberTier, updateMemberInfo } from '../../data/users';
 import { AppUser, CREW_LABEL, TIER_LABEL, Tier } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { can } from '../../lib/permissions';
@@ -28,6 +28,9 @@ export default function MembersScreen({ navigation }: Props) {
   const [showRealName, setShowRealName] = useState(false);
   const [realNames, setRealNames] = useState<Record<string, string>>({});
   const [pickerMember, setPickerMember] = useState<AppUser | null>(null);
+  const [editMember, setEditMember] = useState<AppUser | null>(null);
+  const [editForm, setEditForm] = useState({ realName: '', nickname: '', phone: '', intro: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = useCallback(async () => {
     const activeMembers = await listMembers();
@@ -86,6 +89,40 @@ export default function MembersScreen({ navigation }: Props) {
       load();
     } catch (e) {
       alert('등급 변경 실패', e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const openEdit = async (m: AppUser) => {
+    setPickerMember(null);
+    try {
+      const full = await getMemberFull(m.id);
+      setEditForm(full);
+      setEditMember(m);
+    } catch (e) {
+      alert('정보 조회 실패', e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editMember) return;
+    if (!editForm.nickname.trim() || !editForm.realName.trim()) {
+      alert('입력 확인', '실명과 닉네임은 비울 수 없어요.');
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await updateMemberInfo(editMember.id, {
+        realName: editForm.realName.trim(),
+        nickname: editForm.nickname.trim(),
+        phone: editForm.phone.trim(),
+        intro: editForm.intro.trim(),
+      });
+      setEditMember(null);
+      load();
+    } catch (e) {
+      alert('수정 실패', e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -183,6 +220,12 @@ export default function MembersScreen({ navigation }: Props) {
                 {pickerMember?.tier === t && <Ionicons name="checkmark" size={18} color={colors.gold} />}
               </TouchableOpacity>
             ))}
+            {isAdmin && pickerMember && (
+              <TouchableOpacity style={styles.modalEdit} onPress={() => openEdit(pickerMember)}>
+                <Ionicons name="create-outline" size={16} color={colors.gold} />
+                <Text style={styles.modalEditText}>회원 정보 수정</Text>
+              </TouchableOpacity>
+            )}
             {user?.isMaster && !pickerMember?.isMaster && (
               <TouchableOpacity style={styles.modalDelete} onPress={handleDeleteMember}>
                 <Ionicons name="trash-outline" size={16} color={colors.danger} />
@@ -190,6 +233,28 @@ export default function MembersScreen({ navigation }: Props) {
               </TouchableOpacity>
             )}
             <TouchableOpacity style={styles.modalCancel} onPress={() => setPickerMember(null)}>
+              <Text style={styles.modalCancelText}>취소</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={!!editMember} transparent animationType="fade" onRequestClose={() => setEditMember(null)}>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setEditMember(null)}>
+          <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+            <Text style={styles.modalTitle}>회원 정보 수정</Text>
+            <Text style={styles.editLabel}>실명</Text>
+            <TextInput style={styles.editInput} value={editForm.realName} onChangeText={(t) => setEditForm((f) => ({ ...f, realName: t }))} placeholder="실명" placeholderTextColor={colors.placeholder} />
+            <Text style={styles.editLabel}>닉네임</Text>
+            <TextInput style={styles.editInput} value={editForm.nickname} onChangeText={(t) => setEditForm((f) => ({ ...f, nickname: t }))} placeholder="닉네임" placeholderTextColor={colors.placeholder} />
+            <Text style={styles.editLabel}>전화번호</Text>
+            <TextInput style={styles.editInput} value={editForm.phone} onChangeText={(t) => setEditForm((f) => ({ ...f, phone: t }))} placeholder="전화번호" placeholderTextColor={colors.placeholder} keyboardType="phone-pad" />
+            <Text style={styles.editLabel}>소개</Text>
+            <TextInput style={[styles.editInput, styles.editIntro]} value={editForm.intro} onChangeText={(t) => setEditForm((f) => ({ ...f, intro: t }))} placeholder="소개" placeholderTextColor={colors.placeholder} multiline />
+            <TouchableOpacity style={[styles.editSave, savingEdit && { opacity: 0.6 }]} disabled={savingEdit} onPress={handleSaveEdit}>
+              <Text style={styles.editSaveText}>{savingEdit ? '저장 중...' : '저장'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalCancel} onPress={() => setEditMember(null)}>
               <Text style={styles.modalCancelText}>취소</Text>
             </TouchableOpacity>
           </View>
@@ -224,4 +289,11 @@ const styles = StyleSheet.create({
   modalCancelText: { color: colors.textMuted, fontWeight: '600' },
   modalDelete: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: spacing.md, marginTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.line },
   modalDeleteText: { color: colors.danger, fontWeight: '700' },
+  modalEdit: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: spacing.md, marginTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.line },
+  modalEditText: { color: colors.gold, fontWeight: '700' },
+  editLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, marginTop: spacing.sm, marginBottom: 4 },
+  editInput: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.line, borderRadius: radius.tile, paddingHorizontal: spacing.md, paddingVertical: 10, fontSize: 14, color: colors.text },
+  editIntro: { height: 70, textAlignVertical: 'top' },
+  editSave: { backgroundColor: colors.gold, borderRadius: radius.pill, alignItems: 'center', paddingVertical: 12, marginTop: spacing.lg },
+  editSaveText: { color: colors.white, fontWeight: '700', fontSize: 15 },
 });

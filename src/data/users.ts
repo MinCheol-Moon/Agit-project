@@ -171,6 +171,45 @@ export async function setMemberTier(userId: string, tier: AppUser['tier']): Prom
   if (user) user.tier = tier;
 }
 
+// Full editable profile for the admin edit form (member_directory hides
+// real_name/phone, so read them straight from users - RLS lets akatsuki/master).
+export async function getMemberFull(
+  userId: string,
+): Promise<{ realName: string; nickname: string; phone: string; intro: string }> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('users').select('real_name, nickname, phone, intro').eq('id', userId).single();
+    if (error) throw error;
+    return { realName: data.real_name ?? '', nickname: data.nickname ?? '', phone: data.phone ?? '', intro: data.intro ?? '' };
+  }
+  const u = mockUsers.find((x) => x.id === userId);
+  return { realName: u?.realName ?? '', nickname: u?.nickname ?? '', phone: u?.phone ?? '', intro: u?.intro ?? '' };
+}
+
+// Master/akatsuki editing another member's profile fields (RLS:
+// users_admin_update). Returns nothing; throws on a blocked/failed write.
+export async function updateMemberInfo(
+  userId: string,
+  input: { realName: string; nickname: string; phone: string; intro: string },
+): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ real_name: input.realName, nickname: input.nickname, phone: input.phone, intro: input.intro })
+      .eq('id', userId)
+      .select('id');
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error('수정 권한이 없거나 서버 설정(마이그레이션)이 아직 반영되지 않았어요.');
+    return;
+  }
+  const user = mockUsers.find((u) => u.id === userId);
+  if (user) {
+    user.realName = input.realName;
+    user.nickname = input.nickname;
+    user.phone = input.phone;
+    user.intro = input.intro;
+  }
+}
+
 export async function signUp(input: {
   realName: string;
   nickname: string;
