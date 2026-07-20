@@ -27,11 +27,16 @@ fs.copyFileSync(
 const manifest = {
   name: APP_NAME,
   short_name: APP_NAME,
+  start_url: '/',
   display: 'standalone',
   background_color: THEME_COLOR,
   theme_color: THEME_COLOR,
+  // Android install needs 192 and 512 icons; the file is larger and the
+  // browser downscales it.
   icons: [
-    { src: '/apple-touch-icon.png', sizes: '1024x1024', type: 'image/png', purpose: 'any maskable' },
+    { src: '/apple-touch-icon.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/apple-touch-icon.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: '/apple-touch-icon.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
   ],
 };
 fs.writeFileSync(path.join(dist, 'manifest.webmanifest'), JSON.stringify(manifest));
@@ -55,7 +60,7 @@ let html = fs.readFileSync(htmlPath, 'utf8');
 //    viewport-fit=cover is set. maximum-scale=1 + user-scalable=no stops the
 //    zoom; viewport-fit=cover lets the tab bar pad past the home indicator.
 const VIEWPORT =
-  '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>';
+  '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"/>';
 html = html.replace(/<meta name="viewport"[^>]*>/, VIEWPORT);
 
 if (!html.includes('apple-touch-icon')) {

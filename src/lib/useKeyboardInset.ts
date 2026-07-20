@@ -34,11 +34,22 @@ export function useWebViewportHeight(): number | null {
   return height;
 }
 
+// True only on iOS web browsers. Android Chrome resizes the layout itself when
+// the keyboard opens (see interactive-widget in the exported viewport meta), so
+// the visual-viewport pinning below is iOS-only - on Android it fought the
+// browser and made the chat jump/scroll while typing.
+function isIOSWeb(): boolean {
+  if (Platform.OS !== 'web' || typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && typeof document !== 'undefined' && 'ontouchend' in document);
+}
+
 // Like useWebViewportHeight, but also reports the visual viewport's top offset.
 // On iOS Safari, focusing the input shifts the visual viewport down within the
 // layout viewport (offsetTop > 0); pinning the chat screen with position:fixed
 // at { top: offsetTop, height } keeps the header at the top of the *visible*
-// area instead of letting it scroll off. Returns null on native.
+// area instead of letting it scroll off. Returns null on native AND on
+// non-iOS web (Android/desktop handle the keyboard via layout resize).
 export interface WebViewportRect {
   height: number;
   offsetTop: number;
@@ -48,7 +59,7 @@ export function useWebViewportRect(): WebViewportRect | null {
   const [rect, setRect] = useState<WebViewportRect | null>(null);
 
   useEffect(() => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    if (!isIOSWeb() || typeof window === 'undefined') return;
     const vv = window.visualViewport;
     const update = () =>
       setRect(vv ? { height: vv.height, offsetTop: vv.offsetTop } : { height: window.innerHeight, offsetTop: 0 });
