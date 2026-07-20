@@ -41,8 +41,15 @@ export default function DmRoomScreen({ route, navigation }: Props) {
   const webHeight = viewport?.height ?? null;
 
   useEffect(() => {
-    const id = requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: false }));
-    return () => cancelAnimationFrame(id);
+    const toEnd = () => listRef.current?.scrollToEnd({ animated: false });
+    const id = requestAnimationFrame(toEnd);
+    const t1 = setTimeout(toEnd, 150);
+    const t2 = setTimeout(toEnd, 350);
+    return () => {
+      cancelAnimationFrame(id);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [messages.length, webHeight]);
 
   const refetchPeerRead = useCallback(() => {

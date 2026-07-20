@@ -50,6 +50,10 @@ const tags = [
   '<meta name="apple-mobile-web-app-status-bar-style" content="default"/>',
   `<meta name="theme-color" content="${THEME_COLOR}"/>`,
   '<link rel="manifest" href="/manifest.webmanifest"/>',
+  // Fully lock the document so iOS Safari can't scroll the page itself when the
+  // keyboard opens (that document-scroll was what made the chat jump up). The
+  // app is a fixed shell; inner React Native ScrollViews still scroll normally.
+  '<style>html,body{position:fixed;top:0;left:0;right:0;bottom:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;}</style>',
 ].join('');
 
 let html = fs.readFileSync(htmlPath, 'utf8');

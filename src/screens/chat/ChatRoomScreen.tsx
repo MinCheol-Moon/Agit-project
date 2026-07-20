@@ -91,11 +91,19 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
   }, [roomId, refetchReads]);
 
   // Keep the view pinned to the newest message whenever the list grows or the
-  // visible height changes (keyboard open/close), so sending never leaves the
-  // list scrolled up above the latest message.
+  // visible height changes (keyboard open/close). The delayed scroll catches
+  // the end of the iOS keyboard animation, so the last message isn't left
+  // hidden behind the input.
   useEffect(() => {
-    const id = requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: false }));
-    return () => cancelAnimationFrame(id);
+    const toEnd = () => listRef.current?.scrollToEnd({ animated: false });
+    const id = requestAnimationFrame(toEnd);
+    const t1 = setTimeout(toEnd, 150);
+    const t2 = setTimeout(toEnd, 350);
+    return () => {
+      cancelAnimationFrame(id);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [messages.length, webHeight]);
 
   // Number of members who haven't yet read a message posted at `createdAt`.
