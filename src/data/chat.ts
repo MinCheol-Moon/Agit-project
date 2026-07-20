@@ -29,6 +29,28 @@ export async function listChatRooms(): Promise<ChatRoom[]> {
   return mockChatRooms;
 }
 
+export async function createChatRoom(name: string): Promise<ChatRoom> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('chat_rooms').insert({ name }).select().single();
+    if (error) throw error;
+    return camelizeDeep<ChatRoom>(data);
+  }
+  const room = { id: `r-${Date.now()}`, name } as ChatRoom;
+  mockChatRooms.push(room);
+  return room;
+}
+
+export async function deleteChatRoom(roomId: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase.from('chat_rooms').delete().eq('id', roomId).select('id');
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error('삭제 권한이 없거나 서버 설정(마이그레이션)이 아직 반영되지 않았어요.');
+    return;
+  }
+  const idx = mockChatRooms.findIndex((r) => r.id === roomId);
+  if (idx >= 0) mockChatRooms.splice(idx, 1);
+}
+
 export async function listMessages(roomId: string): Promise<ChatMessage[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
