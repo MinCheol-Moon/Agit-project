@@ -127,7 +127,7 @@ export async function checkIn(scheduleId: string): Promise<Attendance> {
       .select()
       .single();
     if (error) {
-      if (error.code === '23505') throw new Error('오늘은 이미 출석 체크를 하셨어요.');
+      if (error.code === '23505') throw new Error('이미 이 모임에 출석 처리되었어요.');
       throw error;
     }
     return camelizeDeep<Attendance>(data);

@@ -143,9 +143,14 @@ export default function MyPageScreen({ navigation }: Props) {
       </View>
 
       {user.isMaster && (
-        <TouchableOpacity style={styles.linkRow} onPress={() => nav.navigate('HomeTab', { screen: 'Members' })}>
-          <Text style={styles.linkText}>회원 관리 (등급 조정 · 관리자 임명)</Text>
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity style={styles.linkRow} onPress={() => nav.navigate('HomeTab', { screen: 'Members' })}>
+            <Text style={styles.linkText}>회원 관리 (등급 조정 · 관리자 임명)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('MasterQR')}>
+            <Text style={styles.linkText}>출석 체크 QR (모임 현장에서 보여주기)</Text>
+          </TouchableOpacity>
+        </>
       )}
       <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('Rules')}>
         <Text style={styles.linkText}>회칙 보기</Text>

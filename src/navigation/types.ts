@@ -43,6 +43,7 @@ export type CommunityStackParamList = {
 export type MyStackParamList = {
   MyPage: undefined;
   Rules: undefined;
+  MasterQR: undefined;
 };
 
 export type MainTabParamList = {

@@ -5,6 +5,9 @@ import { useAppLock } from '../context/AppLockContext';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { registerForPushNotifications } from '../lib/push';
 import { signOut } from '../lib/session';
+import { capturePendingCheckin, takePendingCheckin } from '../lib/checkinLink';
+import { checkIn } from '../data/schedules';
+import { alert } from '../lib/alert';
 import StealthStackNavigator from './StealthStackNavigator';
 import AuthStackNavigator from './AuthStackNavigator';
 import MainTabNavigator from './MainTabNavigator';
@@ -15,13 +18,27 @@ import PendingApprovalScreen from '../screens/auth/PendingApprovalScreen';
 const AUTO_LOGOUT_MS = 15 * 60 * 1000;
 
 function AuthGate() {
-  const { user, loading } = useAuth();
+  const { user, loading, refresh } = useAuth();
 
   useEffect(() => {
     if (user) {
       registerForPushNotifications().catch(() => {});
     }
   }, [user]);
+
+  // If the member arrived by scanning the master's attendance QR, record their
+  // actual attendance now that they're unlocked and signed in.
+  useEffect(() => {
+    if (user?.status !== 'active') return;
+    const scheduleId = takePendingCheckin();
+    if (!scheduleId) return;
+    checkIn(scheduleId)
+      .then(() => {
+        alert('출석 완료', '실제 출석이 정상 처리되었어요!');
+        refresh();
+      })
+      .catch((e) => alert('출석 처리', e instanceof Error ? e.message : String(e)));
+  }, [user?.status, refresh]);
 
   if (loading) return null;
   if (!user) return <AuthStackNavigator />;
@@ -35,6 +52,12 @@ function AuthGate() {
 export default function RootNavigator() {
   const { ready, unlocked, lock } = useAppLock();
   const backgroundedAt = useRef<number | null>(null);
+
+  // Remember a ?checkin=<scheduleId> param before the PIN/login flow consumes
+  // the navigation, so it survives until AuthGate can act on it.
+  useEffect(() => {
+    capturePendingCheckin();
+  }, []);
 
   useEffect(() => {
     if (Platform.OS !== 'web') {

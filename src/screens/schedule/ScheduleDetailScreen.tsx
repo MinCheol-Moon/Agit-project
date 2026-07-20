@@ -5,7 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../../theme/colors';
 import { ScheduleStackParamList } from '../../navigation/types';
-import { deleteSchedule, getMyRsvp, listAttendeeIds, listSchedules, setRsvp, updateSchedule } from '../../data/schedules';
+import { deleteSchedule, getMyRsvp, listAttendeeIds, listEarlyBirds, listSchedules, setRsvp, updateSchedule } from '../../data/schedules';
 import { listMembers } from '../../data/users';
 import { addScheduleComment, deleteScheduleComment, listScheduleComments } from '../../data/scheduleComments';
 import { CREW_LABEL, Rsvp, Schedule, ScheduleComment } from '../../types';
@@ -33,6 +33,7 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [myRsvp, setMyRsvp] = useState<Rsvp | undefined>();
   const [attendees, setAttendees] = useState<Profile[]>([]);
+  const [checkedIn, setCheckedIn] = useState<Profile[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [comments, setComments] = useState<ScheduleComment[]>([]);
   const [commentInput, setCommentInput] = useState('');
@@ -47,8 +48,9 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
   const canSeeAttendees = can(tier, 'attendance');
 
   const loadAttendees = useCallback(async () => {
-    const [ids, members] = await Promise.all([
+    const [ids, earlyBirds, members] = await Promise.all([
       canSeeAttendees ? listAttendeeIds(scheduleId) : Promise.resolve([]),
+      canSeeAttendees ? listEarlyBirds(scheduleId) : Promise.resolve([]),
       listMembers(),
     ]);
     const profileById: Record<string, Profile> = Object.fromEntries(
@@ -56,6 +58,7 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
     );
     setProfiles(profileById);
     setAttendees(ids.map((id) => profileById[id] ?? { nickname: '회원' }));
+    setCheckedIn(earlyBirds.map((a) => profileById[a.userId] ?? { nickname: '회원' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scheduleId, canSeeAttendees]);
 
@@ -239,6 +242,24 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
           <Text style={styles.lockNote}>랄잡부터 참석자 명단을 볼 수 있어요</Text>
         )}
 
+        {canSeeAttendees && (
+          <View style={styles.attendeeSection}>
+            <Text style={styles.attendeeTitle}>실제 참석 (QR 체크인) {checkedIn.length > 0 ? checkedIn.length : ''}</Text>
+            {checkedIn.length === 0 ? (
+              <Text style={styles.attendeeEmpty}>현장에서 마스터의 출석 QR을 찍으면 여기에 표시돼요</Text>
+            ) : (
+              <View style={styles.attendeeList}>
+                {checkedIn.map((a, i) => (
+                  <View key={`ci-${a.nickname}-${i}`} style={[styles.attendeeChip, styles.checkedInChip]}>
+                    <Avatar url={a.avatarUrl} name={a.nickname} size={22} />
+                    <Text style={styles.attendeeChipText}>{a.nickname}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={styles.commentSection}>
           <Text style={styles.attendeeTitle}>댓글 {comments.length > 0 ? comments.length : ''}</Text>
           {comments.filter((c) => !c.parentId).map((comment) => {
@@ -369,6 +390,7 @@ const styles = StyleSheet.create({
   attendeeEmpty: { fontSize: 13, color: colors.textMuted },
   attendeeList: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   attendeeChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6 },
+  checkedInChip: { borderColor: colors.success, backgroundColor: '#eaf7ee' },
   attendeeChipText: { fontSize: 13, color: colors.text, fontWeight: '600' },
   commentSection: { marginTop: spacing.xl },
   commentRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
