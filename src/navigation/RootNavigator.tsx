@@ -77,25 +77,48 @@ export default function RootNavigator() {
     }
 
     // Web: there's no real "background", so log out after a stretch of
-    // inactivity instead. Any interaction resets the clock; a timer (and the
-    // tab regaining focus) checks whether the idle window has elapsed.
-    let lastActive = Date.now();
+    // inactivity. The last-active time is persisted to localStorage so it
+    // survives a full PWA close/relaunch (iOS kills suspended web apps); on
+    // startup we check it and sign out if the idle window already elapsed,
+    // which forces a real re-login rather than just the PIN.
+    const KEY = 'agit:lastActive';
+    const now = Date.now();
+
+    const stored = Number(window.localStorage.getItem(KEY) || 0);
+    if (stored && now - stored >= AUTO_LOGOUT_MS) {
+      signOut().catch(() => {});
+      lock();
+    }
+    window.localStorage.setItem(KEY, String(now));
+
+    let lastWrite = now;
     const bump = () => {
-      lastActive = Date.now();
+      const t = Date.now();
+      // Throttle localStorage writes to at most once every few seconds.
+      if (t - lastWrite > 4000) {
+        window.localStorage.setItem(KEY, String(t));
+        lastWrite = t;
+      }
     };
     const checkIdle = () => {
-      if (Date.now() - lastActive >= AUTO_LOGOUT_MS) {
+      const last = Number(window.localStorage.getItem(KEY) || 0);
+      if (last && Date.now() - last >= AUTO_LOGOUT_MS) {
         signOut().catch(() => {});
         lock();
       }
     };
     const onVisible = () => {
       if (document.visibilityState === 'visible') checkIdle();
-      else bump();
+      else {
+        window.localStorage.setItem(KEY, String(Date.now()));
+        lastWrite = Date.now();
+      }
     };
     const events: (keyof WindowEventMap)[] = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
     events.forEach((e) => window.addEventListener(e, bump, { passive: true }));
     document.addEventListener('visibilitychange', onVisible);
+    // Only check; do NOT refresh the timestamp here, or an open-but-idle app
+    // would never time out. Real interaction (bump) is what keeps it alive.
     const interval = setInterval(checkIdle, 30 * 1000);
     return () => {
       events.forEach((e) => window.removeEventListener(e, bump));
