@@ -117,7 +117,7 @@ export default function LoginScreen({ navigation }: Props) {
             ))}
           </View>
           {error ? <Text style={styles.error}>{error}</Text> : <View style={styles.errorSpacer} />}
-          <ShuffledKeypad onPress={handleDigit} />
+          <ShuffledKeypad onPress={handleDigit} onBackspace={() => setCode((c) => c.slice(0, -1))} />
           <TouchableOpacity
             onPress={() => {
               setIdentifier('');

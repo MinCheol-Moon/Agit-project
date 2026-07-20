@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 
 function shuffledDigits(): string[] {
@@ -12,24 +13,41 @@ function shuffledDigits(): string[] {
 }
 
 // Phone-dial-shaped 3x4 grid; digits are placed in shuffled order but the
-// last row keeps only its center cell filled, same as a real dial pad.
-export function ShuffledKeypad({ onPress }: { onPress: (digit: string) => void }) {
+// last row keeps only its center cell filled, same as a real dial pad. When
+// onBackspace is given, the bottom-right cell becomes a delete key so a
+// mistap can be corrected instead of having to finish all four digits.
+export function ShuffledKeypad({ onPress, onBackspace }: { onPress: (digit: string) => void; onBackspace?: () => void }) {
   const digits = useMemo(shuffledDigits, []);
-  const layout = [...digits.slice(0, 9), '', digits[9], ''];
+  const layout = [...digits.slice(0, 9), '', digits[9], 'backspace'];
 
   return (
     <View style={styles.grid}>
-      {layout.map((digit, i) => (
-        <TouchableOpacity
-          key={i}
-          style={styles.key}
-          disabled={digit === ''}
-          onPress={() => onPress(digit)}
-          activeOpacity={0.6}
-        >
-          <Text style={styles.keyText}>{digit}</Text>
-        </TouchableOpacity>
-      ))}
+      {layout.map((cell, i) => {
+        if (cell === 'backspace') {
+          return (
+            <TouchableOpacity
+              key={i}
+              style={styles.key}
+              disabled={!onBackspace}
+              onPress={() => onBackspace?.()}
+              activeOpacity={0.6}
+            >
+              {onBackspace ? <Ionicons name="backspace-outline" size={26} color={colors.white} /> : null}
+            </TouchableOpacity>
+          );
+        }
+        return (
+          <TouchableOpacity
+            key={i}
+            style={styles.key}
+            disabled={cell === ''}
+            onPress={() => onPress(cell)}
+            activeOpacity={0.6}
+          >
+            <Text style={styles.keyText}>{cell}</Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }

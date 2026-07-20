@@ -25,13 +25,11 @@ type IconName = keyof typeof Ionicons.glyphMap;
 
 const GRID_ITEMS: { key: string; label: string; icon: IconName; permission: PermissionKey; action: (nav: Nav) => void }[] = [
   { key: 'schedule', label: '일정', icon: 'calendar-outline', permission: 'viewBasicSchedule', action: (nav) => nav.navigate('ScheduleTab', { screen: 'ScheduleList' }) },
-  { key: 'attendance', label: '출석', icon: 'checkmark-circle-outline', permission: 'attendance', action: (nav) => nav.navigate('HomeTab', { screen: 'Attendance' }) },
   { key: 'dues', label: '회비', icon: 'wallet-outline', permission: 'viewDuesExpenses', action: (nav) => nav.navigate('HomeTab', { screen: 'Dues' }) },
   { key: 'chat', label: '채팅', icon: 'chatbubbles-outline', permission: 'chat', action: (nav) => nav.navigate('ChatTab', { screen: 'ChatRoomList' }) },
   { key: 'gallery', label: '갤러리', icon: 'images-outline', permission: 'community', action: (nav) => nav.navigate('CommunityTab', { screen: 'CommunityFeed' }) },
   { key: 'members', label: '멤버', icon: 'people-outline', permission: 'memberList', action: (nav) => nav.navigate('HomeTab', { screen: 'Members' }) },
   { key: 'rules', label: '회칙', icon: 'book-outline', permission: 'viewBasicSchedule', action: (nav) => nav.navigate('MyTab', { screen: 'Rules' }) },
-  { key: 'store', label: '스토어', icon: 'storefront-outline', permission: 'viewBasicSchedule', action: (nav) => nav.navigate('HomeTab', { screen: 'Store' }) },
 ];
 
 export default function HomeScreen({ navigation }: Props) {

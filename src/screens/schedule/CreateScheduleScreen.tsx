@@ -7,6 +7,7 @@ import { createSchedule } from '../../data/schedules';
 import { CREW_LABEL, Crew } from '../../types';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { PickerField } from '../../components/PickerField';
+import { alert } from '../../lib/alert';
 
 type Props = NativeStackScreenProps<ScheduleStackParamList, 'CreateSchedule'>;
 

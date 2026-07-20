@@ -354,6 +354,8 @@ begin
     from users u
     left join attendance_month am on am.user_id = u.id and am.year_month = prev_month
     where u.status = 'active'
+      and u.tier <> 'admin'
+      and coalesce(u.is_master, false) = false
   loop
     current_idx := array_position(tier_order, member.tier);
 
