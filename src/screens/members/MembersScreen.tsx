@@ -241,7 +241,6 @@ export default function MembersScreen({ navigation }: Props) {
 
       <Modal visible={!!editMember} transparent animationType="fade" onRequestClose={() => setEditMember(null)}>
         <View style={styles.modalRoot}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setEditMember(null)} />
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>회원 정보 수정</Text>
             <Text style={styles.editLabel}>실명</Text>
