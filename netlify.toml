@@ -2,7 +2,7 @@
 # every push to main rebuilds and redeploys automatically - no manual export
 # or drag-and-drop needed.
 [build]
-  command = "npx expo export --platform web"
+  command = "npx expo export --platform web && node scripts/postexport-web.js"
   publish = "dist"
 
 [build.environment]

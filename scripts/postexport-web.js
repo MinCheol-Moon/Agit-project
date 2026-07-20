@@ -1,0 +1,56 @@
+// Runs after `expo export --platform web`. Expo SDK 57's static export only
+// emits a browser <title> and favicon, so an iOS "Add to Home Screen" gets a
+// gray auto-generated letter tile instead of the real app icon. This copies
+// the app icon to the web root and injects the Apple/PWA head tags iOS and
+// Android use for home-screen installs.
+const fs = require('fs');
+const path = require('path');
+
+const dist = path.join(__dirname, '..', 'dist');
+const htmlPath = path.join(dist, 'index.html');
+
+// The stealth disguise name — this is what shows under the home-screen icon.
+const APP_NAME = '가계부';
+const THEME_COLOR = '#b2c7da';
+
+// 1. Copy the 1024x1024 app icon to the web root. iOS scales it down and,
+//    even without a link tag, auto-detects /apple-touch-icon.png; we add the
+//    explicit tag too for good measure.
+fs.copyFileSync(
+  path.join(__dirname, '..', 'assets', 'icon.png'),
+  path.join(dist, 'apple-touch-icon.png'),
+);
+
+// 2. A minimal PWA manifest so Android's "Add to Home Screen" also gets a
+//    proper icon and name.
+const manifest = {
+  name: APP_NAME,
+  short_name: APP_NAME,
+  display: 'standalone',
+  background_color: THEME_COLOR,
+  theme_color: THEME_COLOR,
+  icons: [
+    { src: '/apple-touch-icon.png', sizes: '1024x1024', type: 'image/png', purpose: 'any maskable' },
+  ],
+};
+fs.writeFileSync(path.join(dist, 'manifest.webmanifest'), JSON.stringify(manifest));
+
+// 3. Inject the head tags right before </head>.
+const tags = [
+  '<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>',
+  '<meta name="apple-mobile-web-app-capable" content="yes"/>',
+  '<meta name="mobile-web-app-capable" content="yes"/>',
+  `<meta name="apple-mobile-web-app-title" content="${APP_NAME}"/>`,
+  '<meta name="apple-mobile-web-app-status-bar-style" content="default"/>',
+  `<meta name="theme-color" content="${THEME_COLOR}"/>`,
+  '<link rel="manifest" href="/manifest.webmanifest"/>',
+].join('');
+
+let html = fs.readFileSync(htmlPath, 'utf8');
+if (!html.includes('apple-touch-icon')) {
+  html = html.replace('</head>', tags + '</head>');
+  fs.writeFileSync(htmlPath, html);
+  console.log('postexport-web: injected home-screen icon + PWA head tags');
+} else {
+  console.log('postexport-web: head tags already present, skipped');
+}
