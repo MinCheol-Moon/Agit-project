@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, radius, spacing } from '../../theme/colors';
 import { ScheduleStackParamList } from '../../navigation/types';
 import { createSchedule } from '../../data/schedules';
 import { CREW_LABEL, Crew } from '../../types';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { PickerField } from '../../components/PickerField';
 
 type Props = NativeStackScreenProps<ScheduleStackParamList, 'CreateSchedule'>;
 
@@ -19,10 +18,6 @@ function defaultDate(): string {
   return d.toISOString().slice(0, 10);
 }
 
-function pad2(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
 export default function CreateScheduleScreen({ navigation }: Props) {
   const [title, setTitle] = useState('');
   const [place, setPlace] = useState('');
@@ -32,9 +27,12 @@ export default function CreateScheduleScreen({ navigation }: Props) {
   // what looks like already-entered text; submit falls back to the defaults.
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [error, setError] = useState('');
+
+  const stepCapacity = (delta: number) => {
+    const next = Math.max(0, (parseInt(capacity, 10) || 0) + delta);
+    setCapacity(String(next));
+  };
 
   const handleSubmit = async () => {
     if (!title || !place) return;
@@ -51,10 +49,6 @@ export default function CreateScheduleScreen({ navigation }: Props) {
       setError(e instanceof Error ? e.message : String(e));
     }
   };
-
-  // ponytail: the native calendar/wheel pickers don't exist on web - there,
-  // plain text input (already supported) is the whole story.
-  const pickersAvailable = Platform.OS !== 'web';
 
   return (
     <View style={styles.screen}>
@@ -74,7 +68,7 @@ export default function CreateScheduleScreen({ navigation }: Props) {
         </View>
 
         <Text style={styles.label}>제목</Text>
-        <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="모임 제목" />
+        <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="모임 제목" placeholderTextColor={colors.placeholder} />
 
         <Text style={styles.label}>날짜</Text>
         <View style={styles.pickerRow}>
@@ -83,27 +77,10 @@ export default function CreateScheduleScreen({ navigation }: Props) {
             value={date}
             onChangeText={setDate}
             placeholder={`예: ${defaultDate()}`}
+            placeholderTextColor={colors.placeholder}
           />
-          {pickersAvailable && (
-            <TouchableOpacity style={styles.pickerButton} onPress={() => setShowDatePicker(true)}>
-              <Ionicons name="calendar-outline" size={20} color={colors.gold} />
-            </TouchableOpacity>
-          )}
+          <PickerField mode="date" value={date} onChange={setDate} />
         </View>
-        {showDatePicker && (
-          <DateTimePicker
-            value={date ? new Date(`${date}T12:00:00`) : new Date(`${defaultDate()}T12:00:00`)}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-            onChange={(event, selected) => {
-              setShowDatePicker(Platform.OS === 'ios');
-              if (selected) {
-                setDate(`${selected.getFullYear()}-${pad2(selected.getMonth() + 1)}-${pad2(selected.getDate())}`);
-                if (Platform.OS === 'ios') setShowDatePicker(false);
-              }
-            }}
-          />
-        )}
 
         <Text style={styles.label}>시간</Text>
         <View style={styles.pickerRow}>
@@ -112,34 +89,35 @@ export default function CreateScheduleScreen({ navigation }: Props) {
             value={time}
             onChangeText={setTime}
             placeholder="예: 19:00"
+            placeholderTextColor={colors.placeholder}
           />
-          {pickersAvailable && (
-            <TouchableOpacity style={styles.pickerButton} onPress={() => setShowTimePicker(true)}>
-              <Ionicons name="time-outline" size={20} color={colors.gold} />
-            </TouchableOpacity>
-          )}
+          <PickerField mode="time" value={time} onChange={setTime} />
         </View>
-        {showTimePicker && (
-          <DateTimePicker
-            value={new Date(`${defaultDate()}T${time || '19:00'}:00`)}
-            mode="time"
-            display="spinner"
-            minuteInterval={5}
-            onChange={(event, selected) => {
-              setShowTimePicker(Platform.OS === 'ios');
-              if (selected) {
-                setTime(`${pad2(selected.getHours())}:${pad2(selected.getMinutes())}`);
-                if (Platform.OS === 'ios') setShowTimePicker(false);
-              }
-            }}
-          />
-        )}
 
         <Text style={styles.label}>장소</Text>
-        <TextInput style={styles.input} value={place} onChangeText={setPlace} placeholder="모임 장소" />
+        <TextInput style={styles.input} value={place} onChangeText={setPlace} placeholder="모임 장소" placeholderTextColor={colors.placeholder} />
 
         <Text style={styles.label}>정원</Text>
-        <TextInput style={styles.input} value={capacity} onChangeText={setCapacity} keyboardType="number-pad" placeholder="예: 10" />
+        <View style={styles.stepperRow}>
+          <TouchableOpacity style={styles.stepButton} onPress={() => stepCapacity(-1)}>
+            <Text style={styles.stepButtonText}>−</Text>
+          </TouchableOpacity>
+          <View style={styles.stepValue}>
+            <TextInput
+              style={styles.stepInput}
+              value={capacity}
+              onChangeText={(t) => setCapacity(t.replace(/[^0-9]/g, ''))}
+              keyboardType="number-pad"
+              placeholder="10"
+              placeholderTextColor={colors.placeholder}
+              textAlign="center"
+            />
+            <Text style={styles.stepSuffix}>명</Text>
+          </View>
+          <TouchableOpacity style={styles.stepButton} onPress={() => stepCapacity(1)}>
+            <Text style={styles.stepButtonText}>＋</Text>
+          </TouchableOpacity>
+        </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -167,16 +145,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
     fontSize: 14,
+    color: colors.text,
   },
-  pickerRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  pickerRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'stretch' },
   pickerInput: { flex: 1 },
-  pickerButton: {
+  stepperRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  stepButton: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.tile,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepButtonText: { fontSize: 22, color: colors.gold, fontWeight: '700' },
+  stepValue: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radius.tile,
-    padding: 11,
+    height: 48,
+    gap: 4,
   },
+  stepInput: { fontSize: 16, color: colors.text, minWidth: 40, paddingVertical: 0 },
+  stepSuffix: { fontSize: 14, color: colors.textMuted },
   submitButton: {
     backgroundColor: colors.gold,
     borderRadius: radius.card,

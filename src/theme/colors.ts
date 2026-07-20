@@ -9,6 +9,7 @@ export const colors = {
   goldLight: '#f5c451',
   text: '#191c22',
   textMuted: '#6b7280',
+  placeholder: '#b3b7bf',
   line: '#e8e8ec',
   success: '#2f9e57',
   danger: '#d9524d',

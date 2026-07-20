@@ -33,3 +33,39 @@ export function useWebViewportHeight(): number | null {
 
   return height;
 }
+
+// Like useWebViewportHeight, but also reports the visual viewport's top offset.
+// On iOS Safari, focusing the input shifts the visual viewport down within the
+// layout viewport (offsetTop > 0); pinning the chat screen with position:fixed
+// at { top: offsetTop, height } keeps the header at the top of the *visible*
+// area instead of letting it scroll off. Returns null on native.
+export interface WebViewportRect {
+  height: number;
+  offsetTop: number;
+}
+
+export function useWebViewportRect(): WebViewportRect | null {
+  const [rect, setRect] = useState<WebViewportRect | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const vv = window.visualViewport;
+    const update = () =>
+      setRect(vv ? { height: vv.height, offsetTop: vv.offsetTop } : { height: window.innerHeight, offsetTop: 0 });
+    update();
+    if (vv) {
+      vv.addEventListener('resize', update);
+      vv.addEventListener('scroll', update);
+    }
+    window.addEventListener('resize', update);
+    return () => {
+      if (vv) {
+        vv.removeEventListener('resize', update);
+        vv.removeEventListener('scroll', update);
+      }
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+
+  return rect;
+}

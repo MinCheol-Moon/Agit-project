@@ -22,7 +22,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { Avatar } from '../../components/Avatar';
 import { confirmDestructive } from '../../lib/confirm';
 import { alert } from '../../lib/alert';
-import { useWebViewportHeight } from '../../lib/useKeyboardInset';
+import { useWebViewportRect } from '../../lib/useKeyboardInset';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'ChatRoom'>;
 
@@ -38,7 +38,13 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
   const [memberCount, setMemberCount] = useState(0);
   const listRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
-  const webHeight = useWebViewportHeight();
+  const viewport = useWebViewportRect();
+  // Pin the whole screen to the visible viewport on web so the header stays at
+  // the top (and the input above the keyboard) even when iOS shifts things.
+  const webPin = viewport
+    ? ({ position: 'fixed', top: viewport.offsetTop, left: 0, right: 0, height: viewport.height, flex: undefined } as const)
+    : null;
+  const webHeight = viewport?.height ?? null;
 
   const refetchReads = useCallback(() => {
     listRoomReads(roomId).then(setReads).catch(() => {});
@@ -130,7 +136,7 @@ export default function ChatRoomScreen({ route, navigation }: Props) {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.screen, webHeight != null && { height: webHeight, flex: undefined }]}
+      style={[styles.screen, webPin as object]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScreenHeader title={roomName} onBack={() => navigation.goBack()} />
