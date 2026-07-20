@@ -240,8 +240,9 @@ export default function MembersScreen({ navigation }: Props) {
       </Modal>
 
       <Modal visible={!!editMember} transparent animationType="fade" onRequestClose={() => setEditMember(null)}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setEditMember(null)}>
-          <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+        <View style={styles.modalRoot}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setEditMember(null)} />
+          <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>회원 정보 수정</Text>
             <Text style={styles.editLabel}>실명</Text>
             <TextInput style={styles.editInput} value={editForm.realName} onChangeText={(t) => setEditForm((f) => ({ ...f, realName: t }))} placeholder="실명" placeholderTextColor={colors.placeholder} />
@@ -258,7 +259,7 @@ export default function MembersScreen({ navigation }: Props) {
               <Text style={styles.modalCancelText}>취소</Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </View>
   );
@@ -281,6 +282,7 @@ const styles = StyleSheet.create({
   memberName: { fontSize: 14, fontWeight: '700', color: colors.text },
   memberMeta: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: spacing.xl },
+  modalRoot: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: spacing.xl },
   modalCard: { backgroundColor: colors.white, borderRadius: radius.card, padding: spacing.lg },
   modalTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
   modalRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.line },

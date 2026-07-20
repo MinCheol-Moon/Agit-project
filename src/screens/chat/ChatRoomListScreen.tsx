@@ -114,8 +114,9 @@ export default function ChatRoomListScreen({ navigation }: Props) {
       />
 
       <Modal visible={creating} transparent animationType="fade" onRequestClose={() => setCreating(false)}>
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setCreating(false)}>
-          <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+        <View style={styles.backdrop}>
+          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setCreating(false)} />
+          <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>새 대화방</Text>
             <TextInput
               style={styles.modalInput}
@@ -133,7 +134,7 @@ export default function ChatRoomListScreen({ navigation }: Props) {
               <Text style={styles.modalCancelText}>취소</Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </View>
   );
