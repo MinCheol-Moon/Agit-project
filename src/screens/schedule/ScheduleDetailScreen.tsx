@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Share, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -159,20 +159,46 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
     });
   };
 
+  const handleShare = async () => {
+    if (!schedule) return;
+    const when = new Date(schedule.startAt).toLocaleString('ko-KR', {
+      month: 'long',
+      day: 'numeric',
+      weekday: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const message = `[${CREW_LABEL[schedule.crew]}] ${schedule.title}\n📅 ${when}\n📍 ${schedule.place}`;
+    try {
+      // On web (incl. iOS home-screen PWA) this maps to navigator.share, i.e.
+      // the native Apple share sheet; on native it's the OS share dialog.
+      await Share.share({ title: schedule.title, message });
+    } catch {
+      // user cancelled or share unsupported - nothing to do
+    }
+  };
+
   return (
     <View style={styles.screen}>
       <ScreenHeader
         title="일정 상세"
         onBack={() => navigation.goBack()}
         right={
-          canManage && !editing ? (
+          !editing ? (
             <View style={styles.headerActions}>
-              <TouchableOpacity onPress={startEdit}>
-                <Ionicons name="create-outline" size={20} color={colors.text} />
+              <TouchableOpacity onPress={handleShare}>
+                <Ionicons name="share-outline" size={20} color={colors.text} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleDelete}>
-                <Ionicons name="trash-outline" size={20} color={colors.danger} />
-              </TouchableOpacity>
+              {canManage && (
+                <>
+                  <TouchableOpacity onPress={startEdit}>
+                    <Ionicons name="create-outline" size={20} color={colors.text} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleDelete}>
+                    <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           ) : null
         }
