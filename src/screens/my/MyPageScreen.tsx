@@ -162,6 +162,9 @@ export default function MyPageScreen({ navigation }: Props) {
       <TouchableOpacity style={styles.lockButton} onPress={lock}>
         <Text style={styles.lockButtonText}>잠그고 위장 화면으로</Text>
       </TouchableOpacity>
+
+      {/* Build marker: lets us tell at a glance which deploy a device is running. */}
+      <Text style={styles.buildText}>build 2026-07-23a · 공유버튼</Text>
     </ScrollView>
   );
 }
@@ -170,6 +173,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.xxl },
   notice: { fontSize: 13, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xxl },
+  buildText: { fontSize: 10, color: colors.textMuted, textAlign: 'center', marginTop: spacing.md },
   profileCard: { backgroundColor: colors.cardDark, borderRadius: radius.card, padding: spacing.lg },
   profileTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   profileIdentity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
