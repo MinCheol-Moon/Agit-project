@@ -72,14 +72,14 @@ if (!html.includes('apple-touch-icon')) {
 }
 fs.writeFileSync(htmlPath, html);
 
-// 5. SPA routing + cache control as static files so this works on Cloudflare
-//    Pages (and Netlify, which also honors them). Any path serves index.html;
-//    the HTML entry is never cached (it points at the hashed bundle) while the
-//    hashed assets keep their default long cache.
-fs.writeFileSync(path.join(dist, '_redirects'), '/*    /index.html   200\n');
+// 5. Cache control for the HTML entry (it points at the hashed bundle, so it
+//    must never be cached); hashed assets keep their long cache. SPA routing is
+//    handled by wrangler.jsonc's not_found_handling on Cloudflare and by
+//    netlify.toml on Netlify - a `/*  /index.html 200` _redirects file is NOT
+//    written because Cloudflare rejects it as an infinite-loop rule.
 fs.writeFileSync(
   path.join(dist, '_headers'),
   ['/', '  Cache-Control: public, max-age=0, must-revalidate', '/index.html', '  Cache-Control: public, max-age=0, must-revalidate', ''].join('\n'),
 );
 
-console.log('postexport-web: injected head tags + viewport + wrote _redirects/_headers');
+console.log('postexport-web: injected head tags + viewport + wrote _headers');
