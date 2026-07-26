@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 // record their attendance for that schedule. This keeps "voted 참석" separate
 // from "actually showed up", since only scanning the master's live QR counts.
 
-const FALLBACK_ORIGIN = 'https://teal-raindrop-87a4c0.netlify.app';
+const FALLBACK_ORIGIN = 'https://agit-project.moonmc194.workers.dev';
 
 export function siteOrigin(): string {
   if (Platform.OS === 'web' && typeof window !== 'undefined') return window.location.origin;
@@ -17,24 +17,43 @@ export function checkinUrl(scheduleId: string): string {
   return `${siteOrigin()}/?checkin=${scheduleId}`;
 }
 
-// Remembered across the PIN/login flow so a scan that lands on the stealth
-// screen still checks in once the member finishes unlocking.
-let pending: string | null = null;
+// A shareable link that deep-links straight to a schedule's detail page.
+export function scheduleShareUrl(scheduleId: string): string {
+  return `${siteOrigin()}/?schedule=${scheduleId}`;
+}
 
+// Remembered across the PIN/login flow so a link/scan that lands on the stealth
+// screen is still honored once the member finishes unlocking.
+let pendingCheckin: string | null = null;
+let pendingSchedule: string | null = null;
+
+// Reads ?checkin= and ?schedule= from the URL once, at app startup.
 export function capturePendingCheckin(): void {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return;
-  const s = new URLSearchParams(window.location.search).get('checkin');
-  if (s) pending = s;
+  const params = new URLSearchParams(window.location.search);
+  const c = params.get('checkin');
+  if (c) pendingCheckin = c;
+  const s = params.get('schedule');
+  if (s) pendingSchedule = s;
+}
+
+function stripParam(name: string): void {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  url.searchParams.delete(name);
+  window.history.replaceState({}, '', url.pathname + url.search + url.hash);
 }
 
 export function takePendingCheckin(): string | null {
-  const s = pending;
-  pending = null;
-  // Strip the param so a later refresh doesn't re-trigger a check-in.
-  if (s && Platform.OS === 'web' && typeof window !== 'undefined') {
-    const url = new URL(window.location.href);
-    url.searchParams.delete('checkin');
-    window.history.replaceState({}, '', url.pathname + url.search + url.hash);
-  }
+  const s = pendingCheckin;
+  pendingCheckin = null;
+  if (s) stripParam('checkin');
+  return s;
+}
+
+export function takePendingSchedule(): string | null {
+  const s = pendingSchedule;
+  pendingSchedule = null;
+  if (s) stripParam('schedule');
   return s;
 }

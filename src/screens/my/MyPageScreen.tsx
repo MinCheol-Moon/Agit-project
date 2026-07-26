@@ -164,7 +164,7 @@ export default function MyPageScreen({ navigation }: Props) {
       </TouchableOpacity>
 
       {/* Build marker: lets us tell at a glance which deploy a device is running. */}
-      <Text style={styles.buildText}>build 2026-07-23a · 공유버튼</Text>
+      <Text style={styles.buildText}>build 2026-07-26a · 일정 공유링크</Text>
     </ScrollView>
   );
 }

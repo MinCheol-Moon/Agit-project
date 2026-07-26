@@ -15,6 +15,7 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { Avatar } from '../../components/Avatar';
 import { alert } from '../../lib/alert';
 import { confirmDestructive } from '../../lib/confirm';
+import { scheduleShareUrl } from '../../lib/checkinLink';
 
 type Props = NativeStackScreenProps<ScheduleStackParamList, 'ScheduleDetail'>;
 
@@ -168,11 +169,14 @@ export default function ScheduleDetailScreen({ route, navigation }: Props) {
       hour: '2-digit',
       minute: '2-digit',
     });
-    const message = `[${CREW_LABEL[schedule.crew]}] ${schedule.title}\n📅 ${when}\n📍 ${schedule.place}`;
+    const url = scheduleShareUrl(scheduleId);
+    const message = `[${CREW_LABEL[schedule.crew]}] ${schedule.title}\n📅 ${when}\n📍 ${schedule.place}\n${url}`;
     try {
       // On web (incl. iOS home-screen PWA) this maps to navigator.share, i.e.
       // the native Apple share sheet; on native it's the OS share dialog.
-      await Share.share({ title: schedule.title, message });
+      // The url deep-links back to this schedule's detail once the recipient
+      // opens it and unlocks/logs in.
+      await Share.share({ title: schedule.title, message, url });
     } catch {
       // user cancelled or share unsupported - nothing to do
     }

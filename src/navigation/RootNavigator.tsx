@@ -5,9 +5,10 @@ import { useAppLock } from '../context/AppLockContext';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { registerForPushNotifications } from '../lib/push';
 import { signOut } from '../lib/session';
-import { capturePendingCheckin, takePendingCheckin } from '../lib/checkinLink';
+import { capturePendingCheckin, takePendingCheckin, takePendingSchedule } from '../lib/checkinLink';
 import { checkIn } from '../data/schedules';
 import { alert } from '../lib/alert';
+import { navigationRef, openSchedule } from '../lib/navRef';
 import StealthStackNavigator from './StealthStackNavigator';
 import AuthStackNavigator from './AuthStackNavigator';
 import MainTabNavigator from './MainTabNavigator';
@@ -30,6 +31,9 @@ function AuthGate() {
   // actual attendance now that they're unlocked and signed in.
   useEffect(() => {
     if (user?.status !== 'active') return;
+    // A shared schedule link (?schedule=<id>) just opens that schedule's detail.
+    const pendingScheduleId = takePendingSchedule();
+    if (pendingScheduleId) openSchedule(pendingScheduleId);
     const scheduleId = takePendingCheckin();
     if (!scheduleId) return;
     checkIn(scheduleId)
@@ -131,6 +135,7 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer
+      ref={navigationRef}
       // On web, React Navigation otherwise rewrites document.title to the
       // active route name (e.g. "Ledger"), which iOS then picks up as the
       // "Add to Home Screen" name. Pin it to the disguise name instead.
