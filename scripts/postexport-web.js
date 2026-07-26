@@ -71,4 +71,15 @@ if (!html.includes('apple-touch-icon')) {
   html = html.replace('</head>', tags + '</head>');
 }
 fs.writeFileSync(htmlPath, html);
-console.log('postexport-web: injected home-screen icon + PWA head tags + hardened viewport');
+
+// 5. SPA routing + cache control as static files so this works on Cloudflare
+//    Pages (and Netlify, which also honors them). Any path serves index.html;
+//    the HTML entry is never cached (it points at the hashed bundle) while the
+//    hashed assets keep their default long cache.
+fs.writeFileSync(path.join(dist, '_redirects'), '/*    /index.html   200\n');
+fs.writeFileSync(
+  path.join(dist, '_headers'),
+  ['/', '  Cache-Control: public, max-age=0, must-revalidate', '/index.html', '  Cache-Control: public, max-age=0, must-revalidate', ''].join('\n'),
+);
+
+console.log('postexport-web: injected head tags + viewport + wrote _redirects/_headers');
