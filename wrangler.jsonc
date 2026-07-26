@@ -1,0 +1,13 @@
+{
+  // Deploy the exported web build (dist/) as a static site on Cloudflare.
+  // `npx wrangler deploy` uploads the assets; the build command (set in the
+  // Cloudflare project settings) produces dist first via expo export.
+  "name": "agit-project",
+  "compatibility_date": "2024-11-01",
+  "assets": {
+    "directory": "./dist",
+    // Serve index.html for any unmatched path so React Navigation's client-side
+    // routes resolve (single-page app).
+    "not_found_handling": "single-page-application"
+  }
+}
